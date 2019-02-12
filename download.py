@@ -165,7 +165,7 @@ def download_cifar10(download_path):
         fd = os.path.join(target_path, 'data_batch_' + str(i + 1))
         dict = unpickle(fd)
 
-        sys.stdout = Logger(r'C:\Users\Administrator\PycharmProjects\SSGAN-Tensorflow\datasets\cifar10\a.txt')
+        sys.stdout = Logger(r'/home/zhou/Project/tf/SSGAN-Tensorflow/a.txt')
         print(dict)
         print('------------------')
 
@@ -210,12 +210,12 @@ class Logger(object):
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    path = r"C:\Users\Administrator\PycharmProjects\SSGAN-Tensorflow\datasets"
+    path = r"/home/zhou/Project/tf/SSGAN-Tensorflow/datasets"
     if not os.path.exists(path): os.mkdir(path)
 
     if 'MNIST' in args.datasets:
-        download_mnist(r"C:\Users\Administrator\PycharmProjects\SSGAN-Tensorflow\datasets")
+        download_mnist(r"/home/zhou/Project/tf/SSGAN-Tensorflow/datasets")
     if 'SVHN' in args.datasets:
-        download_svhn(r"C:\Users\Administrator\PycharmProjects\SSGAN-Tensorflow\datasets")
+        download_svhn(r"/home/zhou/Project/tf/SSGAN-Tensorflow/datasets")
     if 'CIFAR10' in args.datasets:
-        download_cifar10(r"C:\Users\Administrator\PycharmProjects\SSGAN-Tensorflow\datasets")
+        download_cifar10(r"/home/zhou/Project/tf/SSGAN-Tensorflow/datasets")
