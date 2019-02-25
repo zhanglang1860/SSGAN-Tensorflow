@@ -137,23 +137,23 @@ def download_cifar10(download_path):
 
     # cifar file loader
     def unpickle(file):
-        import pickle
+        import cPickle
         with open(file, 'rb') as fo:
-            dict = pickle.load(fo, encoding='bytes')
+            dict = cPickle.load(fo)#dict = cPickle.load(fo, encoding='bytes')
         return dict
 
     if check_file(data_dir):
         print('CIFAR was downloaded.')
         return
 
-    # data_url = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
-    # k = 'cifar-10-python.tar.gz'
-    # target_path = os.path.join(data_dir, k)
-    # print(target_path)
-    # cmd = ['curl', data_url, '-o', target_path]
-    # print('Downloading CIFAR10')
-    # subprocess.call(cmd)
-    # tarfile.open(target_path, 'r:gz').extractall(data_dir)
+    data_url = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
+    k = 'cifar-10-python.tar.gz'
+    target_path = os.path.join(data_dir, k)
+    print(target_path)
+    #cmd = ['curl', data_url, '-o', target_path]
+    print('Downloading CIFAR10')
+    #subprocess.call(cmd)
+    tarfile.open(target_path, 'r:gz').extractall(data_dir)
 
     num_cifar_train = 50000
     num_cifar_test = 10000
@@ -165,7 +165,7 @@ def download_cifar10(download_path):
         fd = os.path.join(target_path, 'data_batch_' + str(i + 1))
         dict = unpickle(fd)
 
-        sys.stdout = Logger(r'/home/zhou/Project/tf/SSGAN-Tensorflow/a.txt')
+        sys.stdout = Logger(r'/home/yc/PycharmProjects/SSGAN-Tensorflow/a.txt')
         print(dict)
         print('------------------')
 
@@ -183,10 +183,10 @@ def download_cifar10(download_path):
 
     prepare_h5py(train_image, train_label, test_image, test_label, data_dir, [32, 32, 3])
 
-    # cmd = ['rm', '-f', os.path.join(data_dir, 'cifar-10-python.tar.gz')]
-    # subprocess.call(cmd)
-    # cmd = ['rm', '-rf', os.path.join(data_dir, 'cifar-10-batches-py')]
-    # subprocess.call(cmd)
+    cmd = ['rm', '-f', os.path.join(data_dir, 'cifar-10-python.tar.gz')]
+    subprocess.call(cmd)
+    cmd = ['rm', '-rf', os.path.join(data_dir, 'cifar-10-batches-py')]
+    subprocess.call(cmd)
 
 
 import sys
@@ -210,12 +210,12 @@ class Logger(object):
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    path = r"/home/zhou/Project/tf/SSGAN-Tensorflow/datasets"
+    path = r"/home/yc/PycharmProjects/SSGAN-Tensorflow/datasets"
     if not os.path.exists(path): os.mkdir(path)
 
     if 'MNIST' in args.datasets:
-        download_mnist(r"/home/zhou/Project/tf/SSGAN-Tensorflow/datasets")
+        download_mnist(r"/home/yc/PycharmProjects/SSGAN-Tensorflow/datasets")
     if 'SVHN' in args.datasets:
-        download_svhn(r"/home/zhou/Project/tf/SSGAN-Tensorflow/datasets")
+        download_svhn(r"/home/yc/PycharmProjects/SSGAN-Tensorflow/datasets")
     if 'CIFAR10' in args.datasets:
-        download_cifar10(r"/home/zhou/Project/tf/SSGAN-Tensorflow/datasets")
+        download_cifar10(r"/home/yc/PycharmProjects/SSGAN-Tensorflow/datasets")
