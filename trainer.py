@@ -111,6 +111,7 @@ class Trainer(object):
 
     def train(self):
         log.infov("Training Starts!")
+        _start_time = time.time()
         pprint(self.batch_train)
         step = self.session.run(self.global_step)
 
@@ -139,6 +140,10 @@ class Trainer(object):
                     f = h5py.File(os.path.join(self.train_dir, 'g_img_'+str(s)+'.hdf5'), 'w')
                     f['image'] = g_img
                     f.close()
+        log.infov("Training ends!")
+        _end_time = time.time()
+        total_time = _end_time - _start_time
+        log.infov("total training runtime: %s ", total_time)
 
     def run_single_step(self, batch, step=None, is_train=True):
         _start_time = time.time()
