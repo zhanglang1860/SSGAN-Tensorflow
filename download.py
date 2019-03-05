@@ -64,20 +64,19 @@ def download_mnist(download_path):
     data_url = 'http://yann.lecun.com/exdb/mnist/'
     keys = ['train-images-idx3-ubyte.gz', 'train-labels-idx1-ubyte.gz',
             't10k-images-idx3-ubyte.gz', 't10k-labels-idx1-ubyte.gz']
-    # keys = [ 'train-labels-idx1-ubyte.gz']
 
-    # for k in keys:
-    #     url = (data_url+k).format(**locals())
-    #     target_path = os.path.join(data_dir, k)
-    #     print(target_path)
-    #     cmd = ['curl', url, '-o', target_path]
-    #     print('Downloading ', k)
-    #     subprocess.call(cmd)
-    #     # cmd = ['gzip', '-d', target_path]
-    #     cmd = ['7z', 'e', target_path]
-    #     print('Unzip ', k)
-    #     # subprocess.call(cmd)
-    # print('OK ', k)
+    for k in keys:
+        # url = (data_url+k).format(**locals())
+        target_path = os.path.join(data_dir, k)
+        print(target_path)
+        # cmd = ['curl', url, '-o', target_path]
+        # print('Downloading ', k)
+        # subprocess.call(cmd)
+        # cmd = ['gzip', '-d', target_path]
+        cmd = ['7z', 'e', target_path]
+        print('Unzip ', k)
+        subprocess.call(cmd)
+    print('OK ', k)
     num_mnist_train = 60000
     num_mnist_test = 10000
 
