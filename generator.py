@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-from ops import fcTensorNet
+from ops import fc
 
 
 class Generator(object):
@@ -27,7 +27,7 @@ class Generator(object):
             if not self._reuse:
                 print('\033[93m'+self.name+'\033[0m')
             _ = tf.reshape(input, [input.get_shape().as_list()[0], 1, 1, -1])
-            _ = fcTensorNet(_, 1024, self._is_train, info=not self._reuse, norm='None', name='fc')
+            _ = fc(_, 1024, self._is_train, info=not self._reuse, norm='None', name='fc')
             for i in range(int(np.ceil(np.log2(max(self._h, self._w))))):
                 _ = deconv2d(_, max(self._c, int(_.get_shape().as_list()[-1]/2)), 
                              self._is_train, info=not self._reuse, norm=self._norm_type,

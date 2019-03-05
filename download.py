@@ -64,19 +64,20 @@ def download_mnist(download_path):
     data_url = 'http://yann.lecun.com/exdb/mnist/'
     keys = ['train-images-idx3-ubyte.gz', 'train-labels-idx1-ubyte.gz',
             't10k-images-idx3-ubyte.gz', 't10k-labels-idx1-ubyte.gz']
+    # keys = [ 'train-labels-idx1-ubyte.gz']
 
-    for k in keys:
-        # url = (data_url+k).format(**locals())
-        target_path = os.path.join(data_dir, k)
-        print(target_path)
-        # cmd = ['curl', url, '-o', target_path]
-        # print('Downloading ', k)
-        # subprocess.call(cmd)
-        # cmd = ['gzip', '-d', target_path]
-        cmd = ['7z', 'e', target_path]
-        print('Unzip ', k)
-        subprocess.call(cmd)
-    print('OK ', k)
+    # for k in keys:
+    #     url = (data_url+k).format(**locals())
+    #     target_path = os.path.join(data_dir, k)
+    #     print(target_path)
+    #     cmd = ['curl', url, '-o', target_path]
+    #     print('Downloading ', k)
+    #     subprocess.call(cmd)
+    #     # cmd = ['gzip', '-d', target_path]
+    #     cmd = ['7z', 'e', target_path]
+    #     print('Unzip ', k)
+    #     # subprocess.call(cmd)
+    # print('OK ', k)
     num_mnist_train = 60000
     num_mnist_test = 10000
 
@@ -164,7 +165,7 @@ def download_cifar10(download_path):
         fd = os.path.join(target_path, 'data_batch_' + str(i + 1))
         dict = unpickle(fd)
 
-        sys.stdout = Logger(r'/home/wenyu/PycharmProjects/SSTGAN-Tensorflow/a.txt')
+        sys.stdout = Logger(r'/home/yc/PycharmProjects/SSGAN-Tensorflow/a.txt')
         print(dict)
         print('------------------')
 
@@ -209,12 +210,12 @@ class Logger(object):
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    path = r"/home/wenyu/PycharmProjects/SSTGAN-Tensorflow/datasets"
+    path = r"/home/yc/PycharmProjects/SSGAN-Tensorflow/datasets"
     if not os.path.exists(path): os.mkdir(path)
 
     if 'MNIST' in args.datasets:
-        download_mnist(r"/home/wenyu/PycharmProjects/SSTGAN-Tensorflow/datasets")
+        download_mnist(r"/home/yc/PycharmProjects/SSGAN-Tensorflow/datasets")
     if 'SVHN' in args.datasets:
-        download_svhn(r"/home/wenyu/PycharmProjects/SSTGAN-Tensorflow/datasets")
+        download_svhn(r"/home/yc/PycharmProjects/SSGAN-Tensorflow/datasets")
     if 'CIFAR10' in args.datasets:
-        download_cifar10(r"/home/wenyu/PycharmProjects/SSTGAN-Tensorflow/datasets")
+        download_cifar10(r"/home/yc/PycharmProjects/SSGAN-Tensorflow/datasets")
