@@ -51,7 +51,7 @@ def argparser(is_train=True):
 
     config = parser.parse_args()
 
-    dataset_path = os.path.join(r"/home/wenyu/PycharmProjects/SSTGAN-Tensorflow/datasets",
+    dataset_path = os.path.join(r"/home/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets",
                                 config.dataset.lower())
     dataset_train, dataset_test = dataset.create_default_splits(dataset_path)
     print("step2")
