@@ -38,7 +38,7 @@ def argparser(is_train=True):
     # learning
     parser.add_argument('--max_sample', type=int, default=5000,
                         help='num of samples the model can see')
-    parser.add_argument('--max_training_steps', type=int, default=150000)
+    parser.add_argument('--max_training_steps', type=int, default=10000)
     parser.add_argument('--learning_rate_g', type=float, default=5e-3)
     parser.add_argument('--learning_rate_d', type=float, default=5e-3)
     parser.add_argument('--update_rate', type=int, default=1)
@@ -51,7 +51,7 @@ def argparser(is_train=True):
 
     config = parser.parse_args()
 
-    dataset_path = os.path.join(r"/home/wenyu/PycharmProjects/SSGAN-Tensorflow/datasets",
+    dataset_path = os.path.join(r"/home/wenyu/PycharmProjects/SSGAN-GsoP-Tensorflow/datasets",
                                 config.dataset.lower())
     dataset_train, dataset_test = dataset.create_default_splits(dataset_path)
     print("step2")
