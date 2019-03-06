@@ -209,7 +209,7 @@ def squeeze_excitation_layer(input_x, is_train=True, name="GsoP"):
         # excitation = conv2d_group(squeeze, covariance_matrix_shape, name)
         excitation = grouped_conv_2d(squeeze, 4, [1, covariance_matrix_shape],  strides=1, padding='VALID', name=name)
 
-        scale = excitation_layer(excitation, out_dim, orignialInput, name)
+        scale = excitation_layer(excitation, out_dim, orignialInput, name=name)
     return scale
 
 

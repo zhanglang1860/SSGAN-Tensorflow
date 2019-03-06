@@ -20,7 +20,7 @@ def argparser(is_train=True):
                         choices=['MNIST', 'SVHN', 'CIFAR10'])
     parser.add_argument('--dump_result', type=str2bool, default=False)
     # Model
-    parser.add_argument('--batch_size', type=int, default=16)
+    parser.add_argument('--batch_size', type=int, default=128)
     parser.add_argument('--n_z', type=int, default=128)
     parser.add_argument('--norm_type', type=str, default='batch',
                         choices=['batch', 'instance', 'None'])
@@ -39,8 +39,8 @@ def argparser(is_train=True):
     parser.add_argument('--max_sample', type=int, default=5000,
                         help='num of samples the model can see')
     parser.add_argument('--max_training_steps', type=int, default=10000)
-    parser.add_argument('--learning_rate_g', type=float, default=1e-2)
-    parser.add_argument('--learning_rate_d', type=float, default=1e-2)
+    parser.add_argument('--learning_rate_g', type=float, default=5e-3)
+    parser.add_argument('--learning_rate_d', type=float, default=5e-3)
     parser.add_argument('--update_rate', type=int, default=1)
     # }}}
 
