@@ -79,7 +79,7 @@ class Cifar10DataReader():
 
 
 if __name__ == "__main__":
-    dr = Cifar10DataReader(cifar_folder=r"/home/wenyu/PycharmProjects/SSGAN-GsoP-Tensorflow/datasets/cifar10/cifar-10-batches-py")
+    dr = Cifar10DataReader(cifar_folder=r"/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-GsoP-Tensorflow/datasets/cifar10/cifar-10-batches-py")
 
     import matplotlib.pyplot as plt
     d, l = dr.next_test_data()

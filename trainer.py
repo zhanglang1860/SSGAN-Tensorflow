@@ -98,9 +98,12 @@ class Trainer(object):
 
         session_config = tf.ConfigProto(
             allow_soft_placement=True,
-            gpu_options=tf.GPUOptions(allow_growth=True),
+            gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.7),
             device_count={'GPU': 1},
         )
+
+        session_config.gpu_options.allow_growth = True
+
         self.session = self.supervisor.prepare_or_wait_for_session(config=session_config)
 
         self.ckpt_path = config.checkpoint
@@ -111,6 +114,7 @@ class Trainer(object):
 
     def train(self):
         log.infov("Training Starts!")
+        _start_time = time.time()
         pprint(self.batch_train)
         step = self.session.run(self.global_step)
 
@@ -139,6 +143,10 @@ class Trainer(object):
                     f = h5py.File(os.path.join(self.train_dir, 'g_img_'+str(s)+'.hdf5'), 'w')
                     f['image'] = g_img
                     f.close()
+        log.infov("Training ends!")
+        _end_time = time.time()
+        total_time = _end_time - _start_time
+        log.infov("total training runtime: %s ", total_time)
 
     def run_single_step(self, batch, step=None, is_train=True):
         _start_time = time.time()
