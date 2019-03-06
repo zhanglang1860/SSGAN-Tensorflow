@@ -164,7 +164,7 @@ def download_cifar10(download_path):
         fd = os.path.join(target_path, 'data_batch_' + str(i + 1))
         dict = unpickle(fd)
 
-        sys.stdout = Logger(r'/home/wenyu/PycharmProjects/SSTGAN-Tensorflow/a.txt')
+        sys.stdout = Logger(r'/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-tensor-GsoP-Tensorflow/a.txt')
         print(dict)
         print('------------------')
 
@@ -209,12 +209,12 @@ class Logger(object):
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    path = r"/home/wenyu/PycharmProjects/SSTGAN-Tensorflow/datasets"
+    path = r"/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-tensor-GsoP-Tensorflow/datasets"
     if not os.path.exists(path): os.mkdir(path)
 
     if 'MNIST' in args.datasets:
-        download_mnist(r"/home/wenyu/PycharmProjects/SSTGAN-Tensorflow/datasets")
+        download_mnist(r"/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-tensor-GsoP-Tensorflow/datasets")
     if 'SVHN' in args.datasets:
-        download_svhn(r"/home/wenyu/PycharmProjects/SSTGAN-Tensorflow/datasets")
+        download_svhn(r"/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-tensor-GsoP-Tensorflow/datasets")
     if 'CIFAR10' in args.datasets:
-        download_cifar10(r"/home/wenyu/PycharmProjects/SSTGAN-Tensorflow/datasets")
+        download_cifar10(r"/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-tensor-GsoP-Tensorflow/datasets")

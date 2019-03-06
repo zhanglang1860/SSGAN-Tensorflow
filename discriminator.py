@@ -25,7 +25,9 @@ class Discriminator(object):
                 ch = num_channel[i] if i < len(num_channel) else 512
                 _ = conv2dtensorNet(_, ch, self._is_train, info=not self._reuse,
                            norm=self._norm_type, name='conv{}'.format(i+1))
-                _ = squeeze_excitation_layer(_, is_train=True, name='GsoP{}'.format(i + 1))
+                if i == 1:
+                    _ = squeeze_excitation_layer(_, is_train=True, name='GsoP{}'.format(i + 1))
+
             _ = conv2dtensorNet(_, int(num_channel[i]/4), self._is_train, k=1, s=1,
                        info=not self._reuse, norm='None', name='conv{}'.format(i+2))
             _ = conv2dtensorNet(_, self._num_class+1, self._is_train, k=1, s=1, info=not self._reuse,

@@ -33,7 +33,7 @@ formatter = ColoredFormatter(
 )
 ch.setFormatter(formatter)
 
-log = logging.getLogger('sstgan')
+log = logging.getLogger('sstgan-tensor-GsoP')
 log.setLevel(logging.DEBUG)
 log.handlers = []       # No duplicated handlers
 log.propagate = False   # workaround for duplicated logs in ipython
