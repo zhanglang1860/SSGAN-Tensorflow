@@ -1,0 +1,6 @@
+model_checkpoint_path: "/home/wenyu/PycharmProjects/variational-autoencoder/training/train-9"
+all_model_checkpoint_paths: "/home/wenyu/PycharmProjects/variational-autoencoder/training/train-5"
+all_model_checkpoint_paths: "/home/wenyu/PycharmProjects/variational-autoencoder/training/train-6"
+all_model_checkpoint_paths: "/home/wenyu/PycharmProjects/variational-autoencoder/training/train-7"
+all_model_checkpoint_paths: "/home/wenyu/PycharmProjects/variational-autoencoder/training/train-8"
+all_model_checkpoint_paths: "/home/wenyu/PycharmProjects/variational-autoencoder/training/train-9"

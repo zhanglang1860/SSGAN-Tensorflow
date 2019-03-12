@@ -105,7 +105,7 @@ class Model(object):
 
         # Discriminator {{{
         # =========
-        D = Discriminator('Discriminator', self.num_class, self.norm_type, is_train)
+        D = Discriminator('Discriminator', self.num_class, self.norm_type, is_train,self.batch_size)
         d_real, d_real_logits = D(self.image)
         d_fake, d_fake_logits = D(fake_image)
         self.all_preds = d_real
