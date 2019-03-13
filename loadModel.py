@@ -25,7 +25,7 @@ class LoadModel(object):
         z_mean, z_stddev = vae_model.recognition(image_matrix)
         samples = tf.random_normal([self.batchsize, self.n_z], 0, 1, dtype=tf.float32)
         guessed_z = z_mean + (z_stddev * samples)
-        print ("Load model complete.")
+        print ("Load pre-trained VAE model complete.")
         return guessed_z
 
 

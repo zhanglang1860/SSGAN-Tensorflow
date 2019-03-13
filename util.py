@@ -12,6 +12,7 @@ import logging
 import os, os.path
 from colorlog import ColoredFormatter
 
+
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 
@@ -44,3 +45,5 @@ def _infov(self, msg, *args, **kwargs):
     self.log(logging.INFO + 1, msg, *args, **kwargs)
 
 logging.Logger.infov = _infov
+
+

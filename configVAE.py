@@ -1,11 +1,11 @@
 import argparse
 import os
 
-from model import Model
+from vaeModel import VAEModel
 import datasets.hdf5_loader as dataset
 
 
-def argparser(is_train=True):
+def argparserVAE(is_train=True):
     def str2bool(v):
         return v.lower() == 'true'
 
@@ -20,16 +20,11 @@ def argparser(is_train=True):
                         choices=['MNIST', 'SVHN', 'CIFAR10'])
     parser.add_argument('--dump_result', type=str2bool, default=False)
     # Model
-    parser.add_argument('--batch_size', type=int, default=128)
-    parser.add_argument('--n_z', type=int, default=128)
+    parser.add_argument('--batch_size', type=int, default=100)
+    parser.add_argument('--n_z', type=int, default=11)
     parser.add_argument('--norm_type', type=str, default='batch',
                         choices=['batch', 'instance', 'None'])
-    parser.add_argument('--deconv_type', type=str, default='bilinear',
-                        choices=['bilinear', 'nn', 'transpose'])
 
-    # Training config {{{
-    # ========
-    # log
     parser.add_argument('--log_step', type=int, default=10)
     parser.add_argument('--write_summary_step', type=int, default=100)
     parser.add_argument('--ckpt_save_step', type=int, default=10000)
@@ -38,9 +33,9 @@ def argparser(is_train=True):
     # learning
     parser.add_argument('--max_sample', type=int, default=5000,
                         help='num of samples the model can see')
-    parser.add_argument('--max_training_steps', type=int, default=10000)
-    parser.add_argument('--learning_rate_g', type=float, default=5e-3)
-    parser.add_argument('--learning_rate_d', type=float, default=5e-3)
+    parser.add_argument('--max_training_steps', type=int, default=10)
+    parser.add_argument('--learning_rate_encoder', type=float, default=0.001)
+    parser.add_argument('--learning_rate_decoder', type=float, default=0.001)
     parser.add_argument('--update_rate', type=int, default=1)
     # }}}
 
@@ -51,8 +46,9 @@ def argparser(is_train=True):
 
     config = parser.parse_args()
 
-    dataset_path = os.path.join(r"/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets",
-                                config.dataset.lower())
+    dataset_path = os.path.join(
+        r"/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-encoder-Tensorflow/datasets",
+        config.dataset.lower())
     dataset_train, dataset_test = dataset.create_default_splits(dataset_path)
     print("step2")
     img, label = dataset_train.get_data(dataset_train.ids[0])
@@ -63,5 +59,5 @@ def argparser(is_train=True):
     config.num_class = label.shape[0]
 
     # --- create model ---
-    model = Model(config, debug_information=config.debug, is_train=is_train)
-    return config, model, dataset_train, dataset_test
+    model = VAEModel(config, debug_information=config.debug, is_train=is_train)
+    return config, model
