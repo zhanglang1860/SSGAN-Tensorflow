@@ -7,7 +7,7 @@ class LoadModel(object):
         self.n_z = n_z
 
         self.saver = tf.train.import_meta_graph(
-            '/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-encoder-Tensorflow/preTrainedModel/train-9.meta'
+            '/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-encoder-Tensorflow/training/train-3033.meta'
         )
         session_config = tf.ConfigProto(
             allow_soft_placement=True,
@@ -18,7 +18,7 @@ class LoadModel(object):
 
     def load_pre_train_model(self, input):
         self.saver.restore(self.session, tf.train.latest_checkpoint(
-            '/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-encoder-Tensorflow/preTrainedModel'))
+            '/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-encoder-Tensorflow/training'))
 
         image_matrix = tf.reshape(input, [-1, 28, 28, 1])
         vae_model = LatentAttention(self.batchsize,self.n_z)
