@@ -167,12 +167,14 @@ def download_ulna(download_path):
         addr = train_addrs[i]
         img = cv2.imread(addr)
         gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray_img = gray_img[..., None]
         train_images.append(gray_img)
 
     for i in range(len(test_addrs)):
         addr = test_addrs[i]
         img = cv2.imread(addr)
         gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray_img = gray_img[..., None]
         test_images.append(gray_img)
 
 

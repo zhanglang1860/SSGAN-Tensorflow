@@ -69,6 +69,8 @@ def argparser(is_train=True):
 
     config.num_class = label.shape[0]
 
+
+
     # --- create model ---
     model = Model(config, debug_information=config.debug, is_train=is_train)
     return config, model, dataset_train, dataset_test
