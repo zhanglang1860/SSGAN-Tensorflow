@@ -19,6 +19,7 @@ def print_info(name, shape, activation_fn):
         name,  '' if activation_fn is None else ' ('+activation_fn.__name__+')',
         shape))
 
+
 def split_dimension_to_rank_multiple(x,d):
     if d==4:
         dimensionTemp = [4, 4, 4, 4]
@@ -45,17 +46,23 @@ def split_dimension_to_rank_multiple(x,d):
         else:
             if x % 4 == 0:
                 if x % 4 == 0:
-                    out[3] = x / 8
-                    out[2] = 2
+                    if x==4:
+                        out[1] = 1
+                        out[2] = 2
+                        out[0] = 2
+                    else:
+                        out[2] = x / 8
+                        out[1] = 2
                 else:
-                    out[2] = 1
-                    out[3] = x / 4
+                    out[1] = 1
+                    out[2] = x / 4
             else:
                 out[1] = 1
                 out[2] = 1
                 out[0] = x
     out.astype(np.int32)
     return out
+
 
 
 

@@ -19,7 +19,7 @@ class Discriminator(object):
             if not self._reuse:
                 print('\033[93m'+self.name+'\033[0m')
             _ = input
-            num_channel = [32, 64, 128, 256, 256, 512]
+            num_channel = [32, 64, 128, 256, 256, 512, 512, 512, 512, 512, 512, 512, 512, 512]
             num_layer = np.ceil(np.log2(min(_.shape.as_list()[1:3]))).astype(np.int)
             for i in range(num_layer):
                 ch = num_channel[i] if i < len(num_channel) else 512

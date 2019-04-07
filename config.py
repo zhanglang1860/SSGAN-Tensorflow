@@ -17,7 +17,7 @@ def argparser(is_train=True):
     parser.add_argument('--train_dir', type=str)
     parser.add_argument('--checkpoint', type=str, default=None)
     parser.add_argument('--dataset', type=str, default='CIFAR10',
-                        choices=['MNIST', 'SVHN', 'CIFAR10'])
+                        choices=['MNIST', 'SVHN', 'CIFAR10','ulna'])
     parser.add_argument('--dump_result', type=str2bool, default=False)
     # Model
     parser.add_argument('--batch_size', type=int, default=128)
@@ -59,7 +59,11 @@ def argparser(is_train=True):
     print("step3")
     config.h = img.shape[0]
     config.w = img.shape[1]
-    config.c = img.shape[2]
+    if img.shape == 3:
+        config.c = img.shape[2]
+    else:
+        config.c = 1
+
     config.num_class = label.shape[0]
 
     # --- create model ---
