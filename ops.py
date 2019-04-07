@@ -7,7 +7,7 @@ from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import array_ops
 from tflearn.layers.conv import grouped_conv_2d
 import tensorflow_extentions as tfe
-import tensornet
+
 import sys
 
 
