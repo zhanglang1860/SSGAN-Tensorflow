@@ -17,10 +17,10 @@ def argparser(is_train=True):
     parser.add_argument('--train_dir', type=str)
     parser.add_argument('--checkpoint', type=str, default=None)
     parser.add_argument('--dataset', type=str, default='CIFAR10',
-                        choices=['MNIST', 'SVHN', 'CIFAR10'])
+                        choices=['MNIST', 'SVHN', 'CIFAR10','ulna'])
     parser.add_argument('--dump_result', type=str2bool, default=False)
     # Model
-    parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--batch_size', type=int, default=128)
     parser.add_argument('--n_z', type=int, default=128)
     parser.add_argument('--norm_type', type=str, default='batch',
                         choices=['batch', 'instance', 'None'])
@@ -38,9 +38,9 @@ def argparser(is_train=True):
     # learning
     parser.add_argument('--max_sample', type=int, default=5000,
                         help='num of samples the model can see')
-    parser.add_argument('--max_training_steps', type=int, default=10000000)
-    parser.add_argument('--learning_rate_g', type=float, default=1e-4)
-    parser.add_argument('--learning_rate_d', type=float, default=1e-4)
+    parser.add_argument('--max_training_steps', type=int, default=10000)
+    parser.add_argument('--learning_rate_g', type=float, default=5e-3)
+    parser.add_argument('--learning_rate_d', type=float, default=5e-3)
     parser.add_argument('--update_rate', type=int, default=1)
     # }}}
 
@@ -51,7 +51,7 @@ def argparser(is_train=True):
 
     config = parser.parse_args()
 
-    dataset_path = os.path.join(r"/home/wenyu/PycharmProjects/SSGAN-tensor-Tensorflow/datasets",
+    dataset_path = os.path.join(r"/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-tensor-Tensorflow/datasets",
                                 config.dataset.lower())
     dataset_train, dataset_test = dataset.create_default_splits(dataset_path)
     print("step2")
@@ -59,7 +59,10 @@ def argparser(is_train=True):
     print("step3")
     config.h = img.shape[0]
     config.w = img.shape[1]
-    config.c = img.shape[2]
+    if img.shape == 3:
+        config.c = img.shape[2]
+    else:
+        config.c = 1
     config.num_class = label.shape[0]
 
     # --- create model ---

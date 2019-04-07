@@ -40,11 +40,16 @@ def split_dimension_to_rank_multiple(x,d):
         else:
             if x % 4 == 0:
                 if x % 4 == 0:
-                    out[3] = x / 8
-                    out[2] = 2
+                    if x==4:
+                        out[1] = 1
+                        out[2] = 2
+                        out[0] = 2
+                    else:
+                        out[2] = x / 8
+                        out[1] = 2
                 else:
-                    out[2] = 1
-                    out[3] = x / 4
+                    out[1] = 1
+                    out[2] = x / 4
             else:
                 out[1] = 1
                 out[2] = 1
