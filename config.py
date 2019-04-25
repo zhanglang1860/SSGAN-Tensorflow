@@ -61,7 +61,7 @@ def argparser(is_train=True):
     config.h = img.shape[0]
     config.w = img.shape[1]
 
-    if img.shape==3:
+    if len(img.shape)==3:
         config.c = img.shape[2]
     else:
         config.c = 1
