@@ -99,7 +99,7 @@ class Trainer(object):
         session_config = tf.ConfigProto(
             allow_soft_placement=True,
             gpu_options=tf.GPUOptions(allow_growth=True),
-            device_count={'GPU': 1},
+            device_count={'GPU': 2},
         )
         self.session = self.supervisor.prepare_or_wait_for_session(config=session_config)
 
