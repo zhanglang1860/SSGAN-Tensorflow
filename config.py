@@ -45,7 +45,7 @@ def argparser(is_train=True):
     parser.add_argument('--max_training_steps', type=int, default=10000)
     parser.add_argument('--learning_rate_g', type=float, default=5e-3)
     parser.add_argument('--learning_rate_d', type=float, default=5e-5)
-    parser.add_argument('--update_rate', type=int, default=1)
+    parser.add_argument('--update_rate', type=int, default=5)
     # }}}
 
     # Testing config {{{
