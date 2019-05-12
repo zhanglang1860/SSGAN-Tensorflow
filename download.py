@@ -53,6 +53,43 @@ def prepare_h5py(train_image, train_label, test_image, test_label, data_dir, num
 
 
 
+def prepare_h5py_mri2(image, label, data_dir, num_class=10,shape=None,first_class_label='0',second_class_label='1'):
+
+    print('Preprocessing data...')
+
+    import progressbar
+    bar = progressbar.ProgressBar(maxval=833,
+                                  widgets=[progressbar.Bar('=', '[', ']'), ' ',
+                                           progressbar.Percentage()])
+    bar.start()
+
+    hdf5_file_name='MRIdata_'+ str(num_class) +'_'+first_class_label+'_'+second_class_label+'.hdf5'
+    id_file_name='MRIdata_'+ str(num_class) +'_'+first_class_label+'_'+second_class_label+'_id.txt'
+
+    f = h5py.File(os.path.join(data_dir, hdf5_file_name), 'w')
+    data_id = open(os.path.join(data_dir, id_file_name), 'w')
+    for i in range(image.shape[0]):
+
+        if i % (image.shape[0] / 100) == 0:
+            bar.update(i / (image.shape[0] / 100))
+
+        grp = f.create_group(str(i))
+        data_id.write(str(i) + '\n')
+        if shape:
+            grp['image'] = np.reshape(image[i], shape, order='F')
+        else:
+            grp['image'] = image[i]
+        label_vec = np.zeros(num_class)#10
+        index=label[i] % 10
+        label_vec[label[i] % 10] = 1
+        grp['label'] = label_vec.astype(np.bool)
+    bar.finish()
+    f.close()
+    data_id.close()
+    return
+
+
+
 
 
 def prepare_h5py_mri3(image, label, data_dir, num_class=10,shape=None):
@@ -229,7 +266,7 @@ def download_ulna(download_path):
 
 
 def download_mri2_class(download_path):
-    shuffle_data = True
+
     data_dir = os.path.join(download_path, 'mri')
 
     all_jpg_path = '/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/all/'
@@ -239,58 +276,59 @@ def download_mri2_class(download_path):
         return
 
 
-    addrs = []
-    labels = []
+
     real_labels = ['AD','MCI','Normal']
-    each_class_image = []
-    each_class_label = []
-    for i in len(real_labels):
-        image_set = 'images_class_' + i
-        label_set = 'labels_class_' + i
+    image_class_list = []
+    label_class_list = []
+    for i in range(len(real_labels)):
+        image_class_list.append([])
+        label_class_list.append([])
 
-
+    for i in range(len(real_labels)):
+        image_class_list[i] = []
+        label_class_list[i] = []
 
     with open("/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/label.csv") as file:
         for line in file:
             strFull = line.split(',')
-            each_label = strFull[1].split('\n')
-
-            image_set = list()
-
-            label_set = list()
             strFull[0]=strFull[0]+'.nii'
-            image_set.append(strFull[0])
-            label_set.append(each_label[0])
+            each_label = strFull[1].split('\n')
+            class_label_index=int(each_label[0])
+            image_class_list[class_label_index].append(strFull[0])
+            label_class_list[class_label_index].append(each_label[0])
 
 
-
-    if shuffle_data:
-        c = list(zip(addrs, labels))
+    for i in range(len(real_labels)):
+        c = list(zip(image_class_list[i], label_class_list[i]))
         shuffle(c)
-        addrs, labels = zip(*c)
+        image_class_list[i], label_class_list[i] = zip(*c)
+        image_class_list[i]=list(image_class_list[i])
+        label_class_list[i] = list(label_class_list[i])
 
-    all_label = np.array(labels, dtype=np.float)
+    for i in range(len(real_labels)):
+        j = i+1
+        while j < len(real_labels):
+            addrs=image_class_list[i]+image_class_list[j]
+            labels = label_class_list[i]+label_class_list[j]
+            all_images = []
 
-    all_images =[]
-
-    for i in range(len(addrs)):
-        addr = addrs[i]
-        # Get nibabel image object
-        img = nib.load(all_jpg_path+addr)
-        # Get data from nibabel image object (returns numpy memmap object)
-        img_data = img.get_data()
-        # Convert to numpy ndarray (dtype: uint16)
-        img_data_arr = (np.array(img_data)).astype('uint8')
-        all_images.append(img_data_arr)
-
-
-    labell = all_label.astype(np.uint8)
-
-    all_image = np.array(all_images)
-    label = np.array(labell)
+            for index in range(len(addrs)):
+                addr = addrs[index]
+                # Get nibabel image object
+                img = nib.load(all_jpg_path + addr)
+                # Get data from nibabel image object (returns numpy memmap object)
+                img_data = img.get_data()
+                # Convert to numpy ndarray (dtype: uint16)
+                img_data_arr = (np.array(img_data)).astype('uint8')
+                all_images.append(img_data_arr)
 
 
-    prepare_h5py_mri3(all_image, label, data_dir,3)
+            all_label = np.array(labels, dtype=np.float)
+            labell = all_label.astype(np.uint8)
+            all_image = np.array(all_images)
+            label = np.array(labell)
+            prepare_h5py_mri2(all_image, label, data_dir, 2,first_class_label=real_labels[i],second_class_label=real_labels[j])
+            j=j+1
 
 
 
@@ -457,8 +495,9 @@ if __name__ == '__main__':
     path = r"/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets"
     if not os.path.exists(path): os.mkdir(path)
 
-    download_mri3_class(path)
     download_mri2_class(path)
+    download_mri3_class(path)
+
     #
     # if 'MNIST' in args.datasets:
     #     download_mnist(r"/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets")
