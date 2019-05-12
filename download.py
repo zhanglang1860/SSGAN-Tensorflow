@@ -97,7 +97,7 @@ def prepare_h5py_mri3(image, label, data_dir, num_class=10,shape=None):
     print('Preprocessing data...')
 
     import progressbar
-    bar = progressbar.ProgressBar(maxval=100,
+    bar = progressbar.ProgressBar(maxval=5000,
                                   widgets=[progressbar.Bar('=', '[', ']'), ' ',
                                            progressbar.Percentage()])
     bar.start()
@@ -309,6 +309,15 @@ def download_mri2_class(download_path):
         j = i+1
         while j < len(real_labels):
             addrs=image_class_list[i]+image_class_list[j]
+
+
+            for ii in range(len(label_class_list[i])):
+                label_class_list[i][ii]=0
+
+
+            for jj in range(len(label_class_list[j])):
+                label_class_list[j][jj]=1
+
             labels = label_class_list[i]+label_class_list[j]
             all_images = []
 
