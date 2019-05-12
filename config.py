@@ -58,9 +58,11 @@ def argparser(is_train=True):
     dataset_path = os.path.join(r"/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets",
                                 config.dataset.lower())
 
-    dataset_train, dataset_test = dataset.create_default_splits(dataset_path,config.hdf5FileName,config.idFileName)
+    dataset_train, dataset_test = dataset.create_default_splits(dataset_path,hdf5FileName=config.hdf5FileName,idFileName=config.idFileName,cross_validation_number=10)
+    #dataset_train, dataset_test are 10 cross validation data.
+    #dataset_train[i] is the i-th fold data
     print("step2")
-    img, label = dataset_train.get_data(dataset_train.ids[0])
+    img, label = dataset_train[0].get_data(dataset_train[0].ids[0])
 
     print("step3")
     config.h = img.shape[0]

@@ -333,9 +333,11 @@ def download_mri2_class(download_path):
 
 
             all_label = np.array(labels, dtype=np.float)
-            labell = all_label.astype(np.uint8)
+
             all_image = np.array(all_images)
-            label = np.array(labell)
+            label = np.array(all_label)
+            all_image =all_image.astype(np.uint8)
+            label = label.astype(np.uint8)
             prepare_h5py_mri2(all_image, label, data_dir, 2,first_class_label=real_labels[i],second_class_label=real_labels[j])
             j=j+1
 
@@ -384,12 +386,12 @@ def download_mri3_class(download_path):
         all_images.append(img_data_arr)
 
 
-    labell = all_label.astype(np.uint8)
+
 
     all_image = np.array(all_images)
-    label = np.array(labell)
-
-
+    label = np.array(all_label)
+    all_image = all_image.astype(np.uint8)
+    label = label.astype(np.uint8)
     prepare_h5py_mri3(all_image, label, data_dir,3)
 
 

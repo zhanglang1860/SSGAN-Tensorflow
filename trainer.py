@@ -21,8 +21,9 @@ class Trainer(object):
     def __init__(self, config, model, dataset, dataset_test):
         self.config = config
         self.model = model
+        temp=config.hdf5FileName.split('.')
         hyper_parameter_str = '{}_lr_g_{}_d_{}_update_G{}D{}'.format(
-            config.dataset, config.learning_rate_g, config.learning_rate_d, 
+            temp[0], config.learning_rate_g, config.learning_rate_d,
             config.update_rate, 1
         )
         self.train_dir = './train_dir/%s-%s-%s' % (
