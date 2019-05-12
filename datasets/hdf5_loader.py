@@ -11,7 +11,7 @@ from util import log
 class Dataset(object):
 
     def __init__(self, path, ids, name='default',
-                 max_examples=None, is_train=True):
+                 max_examples=None, is_train=True,hdf5FileName=None):
         self._ids = list(ids)
         self.name = name
         self.is_train = is_train
@@ -19,13 +19,15 @@ class Dataset(object):
         if max_examples is not None:
             self._ids = self._ids[:max_examples]
 
-        filename = 'data.hdf5'
+        filename = hdf5FileName
+
 
         file = os.path.join(path, filename)
         log.info("Reading %s ...", file)
 
         self.data = h5py.File(file, 'r')
         log.info("Reading Done: %s", file)
+
 
     def get_data(self, id):
         # preprocessing and data augmentation
@@ -47,15 +49,15 @@ class Dataset(object):
         )
 
 
-def create_default_splits(path, is_train=True):
-    train_ids, test_ids = all_ids(path)
-    dataset_train = Dataset(path, train_ids, name='train', is_train=False)
-    dataset_test = Dataset(path, test_ids, name='test', is_train=False)
+def create_default_splits(path, hdf5FileName,idFileName,is_train=True):
+    train_ids, test_ids = all_ids(path,idFileName)
+    dataset_train = Dataset(path, train_ids, name='train', is_train=False,hdf5FileName=hdf5FileName)
+    dataset_test = Dataset(path, test_ids, name='test', is_train=False,hdf5FileName=hdf5FileName)
     return dataset_train, dataset_test
 
 
-def all_ids(path):
-    id_filename = 'id.txt'
+def all_ids(path,idFileName):
+    id_filename = idFileName
     id_txt = os.path.join(path, id_filename)
     with open(id_txt, 'r') as fp:
         ids = [s.strip() for s in fp.readlines() if s]

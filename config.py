@@ -17,7 +17,11 @@ def argparser(is_train=True):
     parser.add_argument('--train_dir', type=str)
     parser.add_argument('--checkpoint', type=str, default=None)
     parser.add_argument('--dataset', type=str, default='MNIST',
-                        choices=['MNIST', 'SVHN', 'CIFAR10','ulna'])
+                        choices=['MNIST', 'SVHN', 'CIFAR10','ulna','MRI'])
+    parser.add_argument('--hdf5FileName', type=str, default='MRIdata_3_AD_MCI_Normal.hdf5',
+                        choices=['MRIdata_2_AD_MCI.hdf5', 'MRIdata_2_AD_Normal.hdf5', 'MRIdata_2_MCI_Normal.hdf5', 'MRIdata_3_AD_MCI_Normal.hdf5'])
+    parser.add_argument('--idFileName', type=str, default='MRIdata_3_AD_MCI_Normal_id.txt',
+                        choices=['MRIdata_2_AD_MCI_id.txt', 'MRIdata_2_AD_Normal_id.txt', 'MRIdata_2_MCI_Normal_id.txt',  'MRIdata_3_AD_MCI_Normal_id.txt'])
     parser.add_argument('--dump_result', type=str2bool, default=False)
     # Model
     parser.add_argument('--batch_size', type=int, default=128)
@@ -53,7 +57,8 @@ def argparser(is_train=True):
 
     dataset_path = os.path.join(r"/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets",
                                 config.dataset.lower())
-    dataset_train, dataset_test = dataset.create_default_splits(dataset_path)
+
+    dataset_train, dataset_test = dataset.create_default_splits(dataset_path,config.hdf5FileName,config.idFileName)
     print("step2")
     img, label = dataset_train.get_data(dataset_train.ids[0])
 
