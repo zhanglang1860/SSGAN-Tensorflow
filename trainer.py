@@ -37,12 +37,13 @@ class Trainer(object):
         print("step2")
         # --- input ops ---
         self.batch_size = config.batch_size
-
+###############################################33
         _, self.batch_train = create_input_ops(
-            dataset, self.batch_size, is_training=True)
+            dataset[0], self.batch_size, is_training=True)
         _, self.batch_test = create_input_ops(
-            dataset_test, self.batch_size, is_training=False)
-
+            dataset_test[0], self.batch_size, is_training=False)
+############# here for 10 cross validation   ###################
+##############################################################3
         # --- optimizer ---
         self.global_step = tf.contrib.framework.get_or_create_global_step(graph=None)
 
