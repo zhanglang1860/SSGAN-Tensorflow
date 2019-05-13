@@ -84,7 +84,7 @@ class Trainer(object):
 
         self.summary_op = tf.summary.merge_all()
 
-        self.saver = tf.train.Saver(max_to_keep=1000)
+        self.saver = tf.train.Saver(max_to_keep=20000)
         self.summary_writer = tf.summary.FileWriter(self.train_dir)
 
         self.supervisor = tf.train.Supervisor(

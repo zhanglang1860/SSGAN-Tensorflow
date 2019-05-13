@@ -55,15 +55,17 @@ class Evaler(object):
 
         # --- input ops ---
         self.batch_size = config.batch_size
+#############################################################################33
+        self.dataset = dataset[0]
 
-        self.dataset = dataset
-
-        check_data_id(dataset, config.data_id)
-        _, self.batch = create_input_ops(dataset, self.batch_size,
+        check_data_id(dataset[0], config.data_id)
+        _, self.batch = create_input_ops(dataset[0], self.batch_size,
                                          data_id=config.data_id,
                                          is_training=False,
                                          shuffle=False)
 
+        ############# here for 10 cross validation   ###################
+###################################################################################
         self.global_step = tf.contrib.framework.get_or_create_global_step(graph=None)
         self.step_op = tf.no_op(name='step_no_op')
 
