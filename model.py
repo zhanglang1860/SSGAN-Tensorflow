@@ -9,7 +9,7 @@ from ops import huber_loss
 from util import log
 from generator import Generator
 from discriminator import Discriminator
-
+import numpy as np
 
 class Model(object):
 
@@ -97,8 +97,11 @@ class Model(object):
         # =========
         G = Generator('Generator', self.h, self.w, self.c,
                       self.norm_type, self.deconv_type, is_train)
-        z = tf.random_uniform([self.batch_size, self.n_z],
-                              minval=-1, maxval=1, dtype=tf.float32)
+
+        next_sigma = 0.5  # float(raw_input())
+        z = np.random.normal(0, next_sigma, size=[self.batch_size, self.n_z]).astype(np.float32)
+        # z = tf.random_uniform([self.batch_size, self.n_z],
+        #                       minval=-1, maxval=1, dtype=tf.float32)
         fake_image = G(z)
         self.fake_image = fake_image
         # }}}
