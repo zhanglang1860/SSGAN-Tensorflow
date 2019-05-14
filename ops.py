@@ -14,48 +14,472 @@ def print_info(name, shape, activation_fn):
         name,  '' if activation_fn is None else ' ('+activation_fn.__name__+')',
         shape))
 
-def split_dimension_to_rank_multiple(x,d):
-    if d==4:
-        dimensionTemp = [4, 4, 4, 4]
-        out = np.array([4, 4, 4, 4])
-        if x%64==0:
-            out[3]=x/64
+def split_dimension_to_rank_multiple(inp_shape,split_dimension_core):
+
+    if split_dimension_core==4:
+        if inp_shape==1048576:
+            out = np.array([32, 32, 32, 32])
         else:
-            if x%16==0:
-                if x%32==0:
-                    out[3] = x/32
-                    out[2] = 2
-                else:
-                    out[2]=1
-                    out[3]=x/16
+            if inp_shape==524288:
+                out = np.array([32, 32, 16, 32])
             else:
-                out[1]=x/4
-                out[2]=1
-                out[3]=1
-    else:
-        dimensionTemp = [4, 4, 4]
-        out = np.array([4, 4, 4])
-        if x % 16 == 0:
-            out[2] = x / 16
-        else:
-            if x % 4 == 0:
-                if x % 4 == 0:
-                    if x==4:
-                        out[1] = 1
-                        out[2] = 2
-                        out[0] = 2
+                if inp_shape == 262144:
+                    out = np.array([32, 16, 16, 32])
+                else:
+                    if inp_shape == 131072:
+                        out = np.array([16, 16, 16, 32])
                     else:
-                        out[2] = x / 8
-                        out[1] = 2
-                else:
-                    out[1] = 1
-                    out[2] = x / 4
+                        if inp_shape == 65536:
+                            out = np.array([16, 16, 16, 16])
+                        else:
+                            if inp_shape == 32768:
+                                out = np.array([16, 16, 8, 16])
+                            else:
+                                if inp_shape == 16384:
+                                    out = np.array([16, 8, 8, 16])
+                                else:
+                                    if inp_shape == 8192:
+                                        out = np.array([8, 8, 8, 16])
+                                    else:
+                                        if inp_shape == 4096:
+                                            out = np.array([8, 8, 8, 8])
+                                        else:
+                                            if inp_shape == 2048:
+                                                out = np.array([8, 4, 8, 8])
+                                            else:
+                                                if inp_shape == 1024:
+                                                    out = np.array([8, 4, 4, 8])
+                                                else:
+                                                    if inp_shape == 512:
+                                                        out = np.array([8, 4, 4, 4])
+                                                    else:
+                                                        if inp_shape == 256:
+                                                            out = np.array([4, 4, 4, 4])
+                                                        else:
+                                                            if inp_shape == 128:
+                                                                out = np.array([4, 2, 4, 4])
+                                                            else:
+                                                                if inp_shape == 64:
+                                                                    out = np.array([4, 2, 2, 4])
+                                                                else:
+                                                                    if inp_shape == 32:
+                                                                        out = np.array([2, 2, 2, 4])
+                                                                    else:
+                                                                        if inp_shape == 16:
+                                                                            out = np.array([2, 2, 2, 2])
+                                                                        else:
+                                                                            if inp_shape == 8:
+                                                                                out = np.array([2, 2, 1, 2])
+                                                                            else:
+                                                                                if inp_shape == 4:
+                                                                                    out = np.array([2, 1, 1, 2])
+    else:
+        if split_dimension_core==5:
+            if inp_shape == 1048576:
+                out = np.array([32, 32, 32, 8,4])
             else:
-                out[1] = 1
-                out[2] = 1
-                out[0] = x
+                if inp_shape == 524288:
+                    out = np.array([32, 32, 16, 8,4])
+                else:
+                    if inp_shape == 262144:
+                        out = np.array([32, 16, 16, 8,4])
+                    else:
+                        if inp_shape == 131072:
+                            out = np.array([16, 16, 16, 8,4])
+                        else:
+                            if inp_shape == 65536:
+                                out = np.array([16, 16, 16, 4,4])
+                            else:
+                                if inp_shape == 32768:
+                                    out = np.array([16, 16, 8, 4,4])
+                                else:
+                                    if inp_shape == 16384:
+                                        out = np.array([16, 8, 8, 4,4])
+                                    else:
+                                        if inp_shape == 8192:
+                                            out = np.array([8, 8, 8, 4,4])
+                                        else:
+                                            if inp_shape == 4096:
+                                                out = np.array([8, 8, 8, 2,4])
+                                            else:
+                                                if inp_shape == 2048:
+                                                    out = np.array([8, 4, 8, 2,4])
+                                                else:
+                                                    if inp_shape == 1024:
+                                                        out = np.array([8, 4, 4, 2,4])
+                                                    else:
+                                                        if inp_shape == 512:
+                                                            out = np.array([8, 4, 4, 2,2])
+                                                        else:
+                                                            if inp_shape == 256:
+                                                                out = np.array([4, 4, 4, 2,2])
+                                                            else:
+                                                                if inp_shape == 128:
+                                                                    out = np.array([4, 2, 4, 2,2])
+                                                                else:
+                                                                    if inp_shape == 64:
+                                                                        out = np.array([4, 2, 2, 2,2])
+                                                                    else:
+                                                                        if inp_shape == 32:
+                                                                            out = np.array([2, 2, 2, 2,2])
+                                                                        else:
+                                                                            if inp_shape == 16:
+                                                                                out = np.array([2, 2, 2, 2,1])
+                                                                            else:
+                                                                                if inp_shape == 8:
+                                                                                    out = np.array([2, 2, 1, 2,1])
+                                                                                else:
+                                                                                    if inp_shape == 4:
+                                                                                        out = np.array([2, 1, 1, 2,1])
+        else:
+            if split_dimension_core == 6:
+                if inp_shape == 1048576:
+                    out = np.array([8, 4, 32, 32, 8, 4])
+                else:
+                    if inp_shape == 524288:
+                        out = np.array([8, 4, 32, 16, 8, 4])
+                    else:
+                        if inp_shape == 262144:
+                            out = np.array([8, 4, 16, 16, 8, 4])
+                        else:
+                            if inp_shape == 131072:
+                                out = np.array([4,4, 16, 16, 8, 4])
+                            else:
+                                if inp_shape == 65536:
+                                    out = np.array([4,4, 16, 16, 4, 4])
+                                else:
+                                    if inp_shape == 32768:
+                                        out = np.array([4,4, 16, 8, 4, 4])
+                                    else:
+                                        if inp_shape == 16384:
+                                            out = np.array([4,4, 8, 8, 4, 4])
+                                        else:
+                                            if inp_shape == 8192:
+                                                out = np.array([4,2, 8, 8, 4, 4])
+                                            else:
+                                                if inp_shape == 4096:
+                                                    out = np.array([4,2, 8, 8, 2, 4])
+                                                else:
+                                                    if inp_shape == 2048:
+                                                        out = np.array([4,2, 4, 8, 2, 4])
+                                                    else:
+                                                        if inp_shape == 1024:
+                                                            out = np.array([4,2, 4, 4, 2, 4])
+                                                        else:
+                                                            if inp_shape == 512:
+                                                                out = np.array([4,2, 4, 4, 2, 2])
+                                                            else:
+                                                                if inp_shape == 256:
+                                                                    out = np.array([2, 2, 4, 4, 2, 2])
+                                                                else:
+                                                                    if inp_shape == 128:
+                                                                        out = np.array([2, 2, 2, 4, 2, 2])
+                                                                    else:
+                                                                        if inp_shape == 64:
+                                                                            out = np.array([2, 2, 2, 2, 2, 2])
+                                                                        else:
+                                                                            if inp_shape == 32:
+                                                                                out = np.array([1,2, 2, 2, 2, 2])
+                                                                            else:
+                                                                                if inp_shape == 16:
+                                                                                    out = np.array([1,2, 2, 2, 2, 1])
+                                                                                else:
+                                                                                    if inp_shape == 8:
+                                                                                        out = np.array([1,2, 2, 1, 2, 1])
+                                                                                    else:
+                                                                                        if inp_shape == 4:
+                                                                                            out = np.array(
+                                                                                                [1,2, 1, 1, 2, 1])
+            else:
+                if split_dimension_core == 7:
+                    if inp_shape == 1048576:
+                        out = np.array([8, 4, 8, 4, 32, 8, 4])
+                    else:
+                        if inp_shape == 524288:
+                            out = np.array([8, 4, 8, 4, 16, 8, 4])
+                        else:
+                            if inp_shape == 262144:
+                                out = np.array([8, 4, 4, 4, 16, 8, 4])
+                            else:
+                                if inp_shape == 131072:
+                                    out = np.array([4, 4, 4, 4, 16, 8, 4])
+                                else:
+                                    if inp_shape == 65536:
+                                        out = np.array([4, 4, 4, 4, 16, 4, 4])
+                                    else:
+                                        if inp_shape == 32768:
+                                            out = np.array([4, 4, 4, 4, 8, 4, 4])
+                                        else:
+                                            if inp_shape == 16384:
+                                                out = np.array([4, 4, 4, 2, 8, 4, 4])
+                                            else:
+                                                if inp_shape == 8192:
+                                                    out = np.array([4, 2, 4, 2, 8, 4, 4])
+                                                else:
+                                                    if inp_shape == 4096:
+                                                        out = np.array([4, 2, 4, 2, 8, 2, 4])
+                                                    else:
+                                                        if inp_shape == 2048:
+                                                            out = np.array([4, 2, 4, 4, 2, 2, 4])
+                                                        else:
+                                                            if inp_shape == 1024:
+                                                                out = np.array([4, 2, 4, 2, 2, 2, 4])
+                                                            else:
+                                                                if inp_shape == 512:
+                                                                    out = np.array([4, 2, 4, 2, 2, 2, 2])
+                                                                else:
+                                                                    if inp_shape == 256:
+                                                                        out = np.array([2, 2, 2, 2, 4, 2, 2])
+                                                                    else:
+                                                                        if inp_shape == 128:
+                                                                            out = np.array([2, 2, 2, 2, 2, 2, 2])
+                                                                        else:
+                                                                            if inp_shape == 64:
+                                                                                out = np.array([1,2, 2, 2, 2, 2, 2])
+                                                                            else:
+                                                                                if inp_shape == 32:
+                                                                                    out = np.array([1, 2, 2, 2, 2, 2,1])
+                                                                                else:
+                                                                                    if inp_shape == 16:
+                                                                                        out = np.array(
+                                                                                            [1, 2, 2, 2, 2, 1,1])
+                                                                                    else:
+                                                                                        if inp_shape == 8:
+                                                                                            out = np.array(
+                                                                                                [1, 2, 2, 1, 2, 1,1])
+                                                                                        else:
+                                                                                            if inp_shape == 4:
+                                                                                                out = np.array(
+                                                                                                    [1, 2, 1, 1, 2, 1,1])
+                else:
+                    if split_dimension_core == 8:
+                        if inp_shape == 1048576:
+                            out = np.array([8, 4, 8, 4, 8, 4, 8, 4])
+                        else:
+                            if inp_shape == 524288:
+                                out = np.array([8, 4, 8, 4, 2,8, 8, 4])
+                            else:
+                                if inp_shape == 262144:
+                                    out = np.array([8, 4, 4, 4, 2,8, 8, 4])
+                                else:
+                                    if inp_shape == 131072:
+                                        out = np.array([4, 4, 4, 4, 2,8, 8, 4])
+                                    else:
+                                        if inp_shape == 65536:
+                                            out = np.array([4, 4, 4, 4, 2,8, 4, 4])
+                                        else:
+                                            if inp_shape == 32768:
+                                                out = np.array([4, 4, 4, 4, 2,4, 4, 4])
+                                            else:
+                                                if inp_shape == 16384:
+                                                    out = np.array([4, 4, 4, 2, 2,4, 4, 4])
+                                                else:
+                                                    if inp_shape == 8192:
+                                                        out = np.array([4, 2, 4, 2, 2,4, 4, 4])
+                                                    else:
+                                                        if inp_shape == 4096:
+                                                            out = np.array([4, 2, 4, 2, 2,4, 2, 4])
+                                                        else:
+                                                            if inp_shape == 2048:
+                                                                out = np.array([4, 2, 4, 2, 2, 2, 2, 4])
+                                                            else:
+                                                                if inp_shape == 1024:
+                                                                    out = np.array([4, 2, 2, 2, 2, 2, 2, 4])
+                                                                else:
+                                                                    if inp_shape == 512:
+                                                                        out = np.array([4, 2, 2, 2, 2, 2, 2, 2])
+                                                                    else:
+                                                                        if inp_shape == 256:
+                                                                            out = np.array([2, 2, 2, 2, 2, 2, 2, 2])
+                                                                        else:
+                                                                            if inp_shape == 128:
+                                                                                out = np.array([1,2, 2, 2, 2, 2, 2, 2])
+                                                                            else:
+                                                                                if inp_shape == 64:
+                                                                                    out = np.array(
+                                                                                        [1,1, 2, 2, 2, 2, 2, 2])
+                                                                                else:
+                                                                                    if inp_shape == 32:
+                                                                                        out = np.array(
+                                                                                            [1,1, 2, 2, 2, 2, 2, 1])
+                                                                                    else:
+                                                                                        if inp_shape == 16:
+                                                                                            out = np.array(
+                                                                                                [1,1, 2, 2, 2, 2, 1, 1])
+                                                                                        else:
+                                                                                            if inp_shape == 8:
+                                                                                                out = np.array(
+                                                                                                    [1,1, 2, 2, 1, 2, 1,
+                                                                                                     1])
+                                                                                            else:
+                                                                                                if inp_shape == 4:
+                                                                                                    out = np.array(
+                                                                                                        [1,1, 2, 1, 1, 2,
+                                                                                                         1, 1])
+                    else:
+                        if split_dimension_core == 9:
+                            if inp_shape == 1048576:
+                                out = np.array([8, 4, 4, 2, 4, 8, 4, 8, 4])
+                            else:
+                                if inp_shape == 524288:
+                                    out = np.array([8, 4, 4, 2, 4, 2, 8, 8, 4])
+                                else:
+                                    if inp_shape == 262144:
+                                        out = np.array([8, 4, 4, 4, 2, 4, 2, 8, 4])
+                                    else:
+                                        if inp_shape == 131072:
+                                            out = np.array([4, 4, 4, 4, 2, 4, 2, 8, 4])
+                                        else:
+                                            if inp_shape == 65536:
+                                                out = np.array([4, 4, 4, 4, 2, 4, 2, 4, 4])
+                                            else:
+                                                if inp_shape == 32768:
+                                                    out = np.array([4, 4, 4, 2, 2, 2, 4, 4, 4])
+                                                else:
+                                                    if inp_shape == 16384:
+                                                        out = np.array([4, 4, 2, 2, 2, 2, 4, 4, 4])
+                                                    else:
+                                                        if inp_shape == 8192:
+                                                            out = np.array([4, 2, 2, 2, 2, 2, 4, 4, 4])
+                                                        else:
+                                                            if inp_shape == 4096:
+                                                                out = np.array([4, 2, 2, 2, 2, 2, 4, 2, 4])
+                                                            else:
+                                                                if inp_shape == 2048:
+                                                                    out = np.array([4, 2, 2, 2, 2, 2, 2, 2, 4])
+                                                                else:
+                                                                    if inp_shape == 1024:
+                                                                        out = np.array([2, 2, 2, 2, 2, 2, 2, 2, 4])
+                                                                    else:
+                                                                        if inp_shape == 512:
+                                                                            out = np.array([2, 2, 2, 2, 2, 2, 2, 2, 2])
+                                                                        else:
+                                                                            if inp_shape == 256:
+                                                                                out = np.array([1,2, 2, 2, 2, 2, 2, 2, 2])
+                                                                            else:
+                                                                                if inp_shape == 128:
+                                                                                    out = np.array(
+                                                                                        [1,1, 2, 2, 2, 2, 2, 2, 2])
+                                                                                else:
+                                                                                    if inp_shape == 64:
+                                                                                        out = np.array(
+                                                                                            [1,1, 1, 2, 2, 2, 2, 2, 2])
+                                                                                    else:
+                                                                                        if inp_shape == 32:
+                                                                                            out = np.array(
+                                                                                                [1,1, 1, 2, 2, 2, 2, 2,
+                                                                                                 1])
+                                                                                        else:
+                                                                                            if inp_shape == 16:
+                                                                                                out = np.array(
+                                                                                                    [1,1, 1, 2, 2, 2, 2,
+                                                                                                     1, 1])
+                                                                                            else:
+                                                                                                if inp_shape == 8:
+                                                                                                    out = np.array(
+                                                                                                        [1,1, 1, 2, 2, 1,
+                                                                                                         2, 1,
+                                                                                                         1])
+                                                                                                else:
+                                                                                                    if inp_shape == 4:
+                                                                                                        out = np.array(
+                                                                                                            [1,1, 1, 2, 1,
+                                                                                                             1, 2,
+                                                                                                             1, 1])
+                        else:
+                            if split_dimension_core == 10:
+                                if inp_shape == 1048576:
+                                    out = np.array([8, 4, 4, 2, 4, 4, 2, 4, 8, 4])
+                                else:
+                                    if inp_shape == 524288:
+                                        out = np.array([8, 4, 4, 2, 4, 2, 4, 2, 8, 4])
+                                    else:
+                                        if inp_shape == 262144:
+                                            out = np.array([8, 4, 4, 4, 2, 4, 2, 4, 2, 4])
+                                        else:
+                                            if inp_shape == 131072:
+                                                out = np.array([4, 4, 4, 4, 2, 4, 2, 4, 2, 4])
+                                            else:
+                                                if inp_shape == 65536:
+                                                    out = np.array([4, 4, 4, 4, 2, 2, 2, 2, 4, 4])
+                                                else:
+                                                    if inp_shape == 32768:
+                                                        out = np.array([4, 4, 2, 2, 2, 2, 2, 4, 4, 4])
+                                                    else:
+                                                        if inp_shape == 16384:
+                                                            out = np.array([4, 4, 2, 2, 2, 2, 2, 2, 4, 4])
+                                                        else:
+                                                            if inp_shape == 8192:
+                                                                out = np.array([4, 2, 2, 2, 2, 2, 2, 2, 4, 4])
+                                                            else:
+                                                                if inp_shape == 4096:
+                                                                    out = np.array([4, 2, 2, 2, 2, 2, 2, 2, 2, 4])
+                                                                else:
+                                                                    if inp_shape == 2048:
+                                                                        out = np.array([4, 2, 2, 2, 2, 2, 2, 2, 2, 2])
+                                                                    else:
+                                                                        if inp_shape == 1024:
+                                                                            out = np.array([2, 2, 2, 2, 2, 2, 2, 2, 2, 2])
+                                                                        else:
+                                                                            if inp_shape == 512:
+                                                                                out = np.array(
+                                                                                    [2, 2, 2, 2, 2, 2, 2, 1,2, 2])
+                                                                            else:
+                                                                                if inp_shape == 256:
+                                                                                    out = np.array(
+                                                                                        [1, 2, 2, 2, 2, 1,2, 2, 2, 2])
+                                                                                else:
+                                                                                    if inp_shape == 128:
+                                                                                        out = np.array(
+                                                                                            [1, 1, 2, 2, 2, 1,2, 2, 2, 2])
+                                                                                    else:
+                                                                                        if inp_shape == 64:
+                                                                                            out = np.array(
+                                                                                                [1, 1, 1, 2,1, 2, 2, 2, 2,
+                                                                                                 2])
+                                                                                        else:
+                                                                                            if inp_shape == 32:
+                                                                                                out = np.array(
+                                                                                                    [1, 1, 1, 2, 2,1, 2,
+                                                                                                     2, 2,
+                                                                                                     1])
+                                                                                            else:
+                                                                                                if inp_shape == 16:
+                                                                                                    out = np.array(
+                                                                                                        [1, 1, 1, 2, 1,2,
+                                                                                                         2, 2,
+                                                                                                         1, 1])
+                                                                                                else:
+                                                                                                    if inp_shape == 8:
+                                                                                                        out = np.array(
+                                                                                                            [1, 1, 1, 2,
+                                                                                                             1,2, 1,
+                                                                                                             2, 1,
+                                                                                                             1])
+                                                                                                    else:
+                                                                                                        if inp_shape == 4:
+                                                                                                            out = np.array(
+                                                                                                                [1, 1,
+                                                                                                                 1, 2,1,
+                                                                                                                 1,
+                                                                                                                 1, 2,
+                                                                                                                 1, 1])
+
+
+
+
+
+
+
+
+
+
+
     out.astype(np.int32)
-    return out
+    if len(out)==split_dimension_core:
+        return out
+
+
 
 
 
@@ -197,14 +621,22 @@ def fc(input, output_shape, is_train, info=False, norm='batch',
 
 
 def fcTensorNet(input, output_shape, is_train, info=False, norm='batch',
-       activation_fn=lrelu, name="fcTensorNet"):
+       activation_fn=lrelu, name="fcTensorNet", split_dimension_core=10,tt_rank=50):
     with tf.variable_scope(name):
         inp_shape = input.get_shape().as_list()[0]
         inp = tf.reshape(input, [inp_shape, -1])
         inp_shape_split = inp.get_shape().as_list()[1]
-        input_mode=split_dimension_to_rank_multiple(inp_shape_split,4)
-        out_mode = split_dimension_to_rank_multiple(output_shape, 4)
-        _ = tensornet.layers.tt(inp, input_mode, out_mode,  np.array([1, 40, 40, 40, 1], dtype=np.int32),
+        input_mode=split_dimension_to_rank_multiple(inp_shape_split,split_dimension_core)
+        out_mode = split_dimension_to_rank_multiple(output_shape, split_dimension_core)
+        tt_rank_array = np.array([1], dtype=np.int32)
+        for ix in range(split_dimension_core):
+            if ix==split_dimension_core-1:
+                tt_rank_array =np.append(tt_rank_array, [1])
+            else:
+                tt_rank_array = np.append(tt_rank_array, [tt_rank])
+
+
+        _ = tensornet.layers.tt(inp, input_mode, out_mode,  tt_rank_array ,
                                 biases_initializer=None, scope=name)
         _ = norm_and_act(_, is_train, norm=norm, activation_fn=activation_fn)
         if info: print_info(name, _.get_shape().as_list(), activation_fn)

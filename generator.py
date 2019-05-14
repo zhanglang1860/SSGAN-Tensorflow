@@ -27,14 +27,22 @@ class Generator(object):
             if not self._reuse:
                 print('\033[93m'+self.name+'\033[0m')
             _ = tf.reshape(input, [input.get_shape().as_list()[0], 1, 1, -1])
-            _ = fcTensorNet(_, 1024, self._is_train, info=not self._reuse, norm='None', name='fc')
-            for i in range(int(np.ceil(np.log2(max(self._h, self._w))))):
-                _ = deconv2d(_, max(self._c, int(_.get_shape().as_list()[-1]/2)), 
+            _ = fcTensorNet(_, 1048576, self._is_train, info=not self._reuse, norm='None', name='fc')
+            # for i in range(int(np.ceil(np.log2(max(self._h, self._w))))):
+            for i in range(7):
+                _ = deconv2d(_, max(self._c, int(_.get_shape().as_list()[-1] / 2)),
                              self._is_train, info=not self._reuse, norm=self._norm_type,
-                             name='deconv{}'.format(i+1))
+                             name='deconv{}'.format(i + 1))
+
+            for index in range(int(np.ceil(np.log2(int(_.get_shape().as_list()[-1]))))):
+            # for index in range(3):
+                _ = deconv2d(_, int(_.get_shape().as_list()[-1] / 2), self._is_train, k=1, s=1, info=not self._reuse,
+                             norm=self._norm_type,
+                             name='deconv{}'.format(i + index + 2))
+
             _ = deconv2d(_, self._c, self._is_train, k=1, s=1, info=not self._reuse,
                          activation_fn=tf.tanh, norm='None',
-                         name='deconv{}'.format(i+2))
+                         name='deconv{}'.format(i + 2))
             _ = tf.image.resize_bilinear(_, [self._h, self._w])
 
             self._reuse = True

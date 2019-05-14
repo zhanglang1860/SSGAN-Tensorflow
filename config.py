@@ -26,8 +26,8 @@ def argparser(is_train=True):
                                  'MRIdata_3_AD_MCI_Normal_id.txt'])
     parser.add_argument('--dump_result', type=str2bool, default=False)
     # Model
-    parser.add_argument('--batch_size', type=int, default=128)
-    parser.add_argument('--n_z', type=int, default=128)
+    parser.add_argument('--batch_size', type=int, default=16)
+    parser.add_argument('--n_z', type=int, default=200)
     parser.add_argument('--norm_type', type=str, default='batch',
                         choices=['batch', 'instance', 'None'])
     parser.add_argument('--deconv_type', type=str, default='bilinear',
