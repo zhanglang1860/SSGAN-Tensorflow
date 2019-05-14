@@ -97,8 +97,7 @@ class Model(object):
         # =========
         G = Generator('Generator', self.h, self.w, self.c,
                       self.norm_type, self.deconv_type, is_train)
-        z = tf.random_uniform([self.batch_size, self.n_z],
-                              minval=-1, maxval=1, dtype=tf.float32)
+        z = tf.random_normal(shape=[self.batch_size, self.n_z], mean=0, stddev=1, dtype=tf.float32)
         fake_image = G(z)
         self.fake_image = fake_image
         # }}}
