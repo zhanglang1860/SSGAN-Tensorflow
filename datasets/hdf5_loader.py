@@ -61,8 +61,8 @@ def all_ids(path,hdf5FileName,idFileName,cross_validation_number):
     id_txt = os.path.join(path, id_filename)
     with open(id_txt, 'r') as fp:
         ids = [s.strip() for s in fp.readlines() if s]
-    rs = np.random.RandomState(123)
-    rs.shuffle(ids)
+    # rs = np.random.RandomState(123)
+    # rs.shuffle(ids)
     # create training/testing splits
     # train_ratio = 0.8
     # train_ids = ids[:int(train_ratio*len(ids))]

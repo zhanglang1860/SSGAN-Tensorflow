@@ -1,7 +1,8 @@
 import numpy as np
 import tensorflow as tf
+from ops import depthwise_conv2d
 from ops import fc
-
+from ops import grouped_conv2d
 
 class Generator(object):
     def __init__(self, name, h, w, c, norm_type, deconv_type, is_train):
@@ -32,10 +33,43 @@ class Generator(object):
                 _ = deconv2d(_, max(self._c, int(_.get_shape().as_list()[-1]/2)), 
                              self._is_train, info=not self._reuse, norm=self._norm_type,
                              name='deconv{}'.format(i+1))
-            _ = deconv2d(_, self._c, self._is_train, k=1, s=1, info=not self._reuse,
-                         activation_fn=tf.tanh, norm='None',
-                         name='deconv{}'.format(i+2))
+            # _ = deconv2d(_, self._c, self._is_train, k=1, s=1, info=not self._reuse,
+            #              activation_fn=tf.tanh, norm='None',
+            #              name='deconv{}'.format(i+2))
             _ = tf.image.resize_bilinear(_, [self._h, self._w])
+            _ = depthwise_conv2d(_, 8, self._is_train, info=not self._reuse, norm=self._norm_type,name='deconv{}'.format(i+2))
+
+            number_filters_each_group=8
+            _ = grouped_conv2d(_,number_filters_each_group*self._c, self._c, self._is_train, info=not self._reuse, norm=self._norm_type,name='deconv{}'.format(i+3))
+
+            number_filters_each_group = 8
+            _ = grouped_conv2d(_, number_filters_each_group * self._c, self._c, self._is_train, info=not self._reuse,
+                               norm=self._norm_type, name='deconv{}'.format(i + 4))
+
+            number_filters_each_group = 8
+            _ = grouped_conv2d(_, number_filters_each_group * self._c, self._c, self._is_train, info=not self._reuse,k=1, s=1,
+                               norm=self._norm_type, name='deconv{}'.format(i + 5))
+
+            # number_filters_each_group = 8
+            # _ = grouped_conv2d(_, number_filters_each_group * self._c, self._c, self._is_train, info=not self._reuse,k=1, s=1,
+            #                    norm=self._norm_type, name='deconv{}'.format(i + 6))
+
+            number_filters_each_group = 4
+            _ = grouped_conv2d(_, number_filters_each_group * self._c, self._c, self._is_train, info=not self._reuse,
+                               k=1, s=1,
+                               norm=self._norm_type, name='deconv{}'.format(i + 6))
+
+            number_filters_each_group = 2
+            _ = grouped_conv2d(_, number_filters_each_group * self._c, self._c, self._is_train, info=not self._reuse,
+                               k=1, s=1,
+                               norm=self._norm_type, name='deconv{}'.format(i + 7))
+
+            number_filters_each_group = 1
+            _ = grouped_conv2d(_, number_filters_each_group * self._c, self._c, self._is_train, info=not self._reuse,
+                               k=1, s=1,
+                               activation_fn=tf.tanh, norm='None', name='deconv{}'.format(i + 8))
+
+
 
             self._reuse = True
             self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.name)

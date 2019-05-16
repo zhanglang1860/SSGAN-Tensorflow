@@ -24,8 +24,8 @@ def argparser(is_train=True):
                         choices=['MRIdata_2_AD_MCI_id.txt', 'MRIdata_2_AD_Normal_id.txt', 'MRIdata_2_MCI_Normal_id.txt',  'MRIdata_3_AD_MCI_Normal_id.txt'])
     parser.add_argument('--dump_result', type=str2bool, default=False)
     # Model
-    parser.add_argument('--batch_size', type=int, default=16)
-    parser.add_argument('--n_z', type=int, default=200)
+    parser.add_argument('--batch_size', type=int, default=3)
+    parser.add_argument('--n_z', type=int, default=128)
     parser.add_argument('--norm_type', type=str, default='batch',
                         choices=['batch', 'instance', 'None'])
     parser.add_argument('--deconv_type', type=str, default='bilinear',
@@ -36,16 +36,16 @@ def argparser(is_train=True):
     # log
     parser.add_argument('--log_step', type=int, default=10)
     parser.add_argument('--write_summary_step', type=int, default=100)
-    parser.add_argument('--ckpt_save_step', type=int, default=100)
+    parser.add_argument('--ckpt_save_step', type=int, default=50)
     parser.add_argument('--test_sample_step', type=int, default=100)
     parser.add_argument('--output_save_step', type=int, default=100)
     # learning
     parser.add_argument('--max_sample', type=int, default=5000,
                         help='num of samples the model can see')
-    parser.add_argument('--max_training_steps', type=int, default=1100)
+    parser.add_argument('--max_training_steps', type=int, default=80000)
     parser.add_argument('--learning_rate_g', type=float, default=0.0025)
-    parser.add_argument('--learning_rate_d', type=float, default=0.000001)
-    parser.add_argument('--update_rate', type=int, default=3)
+    parser.add_argument('--learning_rate_d', type=float, default=0.005)
+    parser.add_argument('--update_rate', type=int, default=6)
     # }}}
 
     # Testing config {{{

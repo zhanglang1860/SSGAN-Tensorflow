@@ -98,8 +98,7 @@ class Model(object):
         G = Generator('Generator', self.h, self.w, self.c,
                       self.norm_type, self.deconv_type, is_train)
 
-        next_sigma = 0.5  # float(raw_input())
-        z = np.random.normal(0, next_sigma, size=[self.batch_size, self.n_z]).astype(np.float32)
+        z = tf.random_normal(shape=[self.batch_size, self.n_z], mean=0, stddev=1, dtype=tf.float32)
         # z = tf.random_uniform([self.batch_size, self.n_z],
         #                       minval=-1, maxval=1, dtype=tf.float32)
         fake_image = G(z)
@@ -108,7 +107,7 @@ class Model(object):
 
         # Discriminator {{{
         # =========
-        D = Discriminator('Discriminator', self.num_class, self.norm_type, is_train)
+        D = Discriminator('Discriminator', self.num_class, self.norm_type, is_train,self.h, self.w, self.c)
         d_real, d_real_logits = D(self.image)
         d_fake, d_fake_logits = D(fake_image)
         self.all_preds = d_real

@@ -24,7 +24,7 @@ class Trainer(object):
         temp=config.hdf5FileName.split('.')
         hyper_parameter_str = '{}_lr_g_{}_d_{}_update_G{}D{}'.format(
             temp[0], config.learning_rate_g, config.learning_rate_d,
-            config.update_rate, 1
+            1, config.update_rate
         )
         self.train_dir = './train_dir/%s-%s-%s' % (
             config.prefix,
@@ -84,7 +84,7 @@ class Trainer(object):
 
         self.summary_op = tf.summary.merge_all()
 
-        self.saver = tf.train.Saver(max_to_keep=20000)
+        self.saver = tf.train.Saver(max_to_keep=30000)
         self.summary_writer = tf.summary.FileWriter(self.train_dir)
 
         self.supervisor = tf.train.Supervisor(
@@ -164,10 +164,11 @@ class Trainer(object):
 
         if step % (self.config.update_rate+1) > 0:
         # Train the generator
-            fetch.append(self.g_optimizer)
+            fetch.append(self.d_optimizer)
         else:
         # Train the discriminator
-            fetch.append(self.d_optimizer)
+            fetch.append(self.g_optimizer)
+
 
         fetch_values = self.session.run(fetch,
             feed_dict=self.model.get_feed_dict(batch_chunk, step=step)
