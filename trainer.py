@@ -18,7 +18,7 @@ from config import argparser
 
 class Trainer(object):
 
-    def __init__(self, config, model, dataset, dataset_test):
+    def __init__(self,config, model, dataset, dataset_test):
         self.config = config
         self.model = model
         temp=config.hdf5FileName.split('.')
@@ -31,6 +31,7 @@ class Trainer(object):
             hyper_parameter_str,
             time.strftime("%Y%m%d-%H%M%S")
         )
+        self.nesterov_momentum = config.nesterov_momentum
 
         os.makedirs(self.train_dir)
         log.infov("Train Dir: %s", self.train_dir)
@@ -62,25 +63,33 @@ class Trainer(object):
         print([v.name for v in rem_var])
         assert not rem_var
 
-        self.d_optimizer = tf.contrib.layers.optimize_loss(
-            loss=self.model.d_loss,
-            global_step=self.global_step,
-            learning_rate=self.config.learning_rate_d,
-            optimizer=tf.train.AdamOptimizer(beta1=0.5),
-            clip_gradients=20.0,
-            name='d_optimize_loss',
-            variables=d_var
-        )
+        l2_loss = tf.add_n(
+            [tf.nn.l2_loss(var) for var in tf.trainable_variables()])
 
-        self.g_optimizer = tf.contrib.layers.optimize_loss(
-            loss=self.model.g_loss,
-            global_step=self.global_step,
-            learning_rate=self.config.learning_rate_g,
-            optimizer=tf.train.AdamOptimizer(beta1=0.5),
-            clip_gradients=20.0,
-            name='g_optimize_loss',
-            variables=g_var
-        )
+        # self.d_optimizer = tf.contrib.layers.optimize_loss(
+        #     loss=self.model.d_loss,
+        #     global_step=self.global_step,
+        #     learning_rate=self.config.learning_rate_d,
+        #     optimizer=tf.train.AdamOptimizer(beta1=0.5),
+        #     clip_gradients=20.0,
+        #     name='d_optimize_loss',
+        #     variables=d_var
+        # )
+
+        self.d_optimizer = tf.train.MomentumOptimizer(
+            self.config.learning_rate_d, self.nesterov_momentum, use_nesterov=True)
+        self.train_step = self.d_optimizer.minimize(
+            self.model.cross_entropy + l2_loss * self.model.weight_decay)
+
+        # self.g_optimizer = tf.contrib.layers.optimize_loss(
+        #     loss=self.model.g_loss,
+        #     global_step=self.global_step,
+        #     learning_rate=self.config.learning_rate_g,
+        #     optimizer=tf.train.AdamOptimizer(beta1=0.5),
+        #     clip_gradients=20.0,
+        #     name='g_optimize_loss',
+        #     variables=g_var
+        # )
 
         self.summary_op = tf.summary.merge_all()
 

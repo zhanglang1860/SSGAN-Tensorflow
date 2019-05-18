@@ -328,13 +328,13 @@ def download_mri2_class(download_path):
                 # Get data from nibabel image object (returns numpy memmap object)
                 img_data = img.get_data()
                 # Convert to numpy ndarray (dtype: uint16)
-                img_data_arr = (np.array(img_data)).astype('uint8')
+                img_data_arr = (np.array(img_data)).astype('float64')
                 all_images.append(img_data_arr)
 
 
             all_label = np.array(labels, dtype=np.float)
 
-            all_image = np.array(all_images)
+            all_image = np.array(all_images, dtype=np.float64)
             label = np.array(all_label)
             all_image =all_image.astype(np.uint8)
             label = label.astype(np.uint8)
@@ -371,7 +371,7 @@ def download_mri3_class(download_path):
         shuffle(c)
         addrs, labels = zip(*c)
 
-    all_label = np.array(labels, dtype=np.float)
+
 
     all_images =[]
 
@@ -382,14 +382,13 @@ def download_mri3_class(download_path):
         # Get data from nibabel image object (returns numpy memmap object)
         img_data = img.get_data()
         # Convert to numpy ndarray (dtype: uint16)
-        img_data_arr = (np.array(img_data)).astype('uint8')
+        img_data_arr = (np.array(img_data)).astype('float64')
         all_images.append(img_data_arr)
 
 
 
-
-    all_image = np.array(all_images)
-    label = np.array(all_label)
+    all_image = np.array(all_images, dtype=np.float64)
+    label = np.array(labels, dtype=np.float)
     all_image = all_image.astype(np.uint8)
     label = label.astype(np.uint8)
     prepare_h5py_mri3(all_image, label, data_dir,3)
