@@ -7,6 +7,13 @@ from tensorflow_extentions import grouped_convolution
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import array_ops
 
+
+
+
+
+TF_VERSION = float('.'.join(tf.__version__.split('.')[:2]))
+
+
 def print_info(name, shape, activation_fn):
     log.info('{}{} {}'.format(
         name,  '' if activation_fn is None else ' ('+activation_fn.__name__+')',
@@ -86,6 +93,168 @@ def conv2d(input, output_shape, is_train, info=False, k=4, s=2, stddev=0.01,
         if info: print_info(name, _.get_shape().as_list(), activation_fn)
     return _
 
+def batch_norm(_input,is_training):
+    output = tf.contrib.layers.batch_norm(
+        _input, scale=True, is_training=is_training,
+        updates_collections=None)
+    return output
+
+
+
+def composite_function(_input, out_features, is_training,keep_prob,kernel_size=3):
+    """Function from paper H_l that performs:
+    - batch normalization
+    - ReLU nonlinearity
+    - convolution with required kernel
+    - dropout, if required
+    """
+    with tf.variable_scope("composite_function"):
+        # BN
+        output = batch_norm(_input,is_training)
+        # ReLU
+        output = tf.nn.relu(output)
+        # convolution
+        output = conv2d_denseNet(
+            output, out_features=out_features, kernel_size=kernel_size)
+        # dropout(in case of training and in case it is no 1.0)
+        output = dropout(output,keep_prob,is_training)
+    return output
+
+def dropout(_input,keep_prob,is_training):
+    if keep_prob < 1:
+        output = tf.cond(
+            is_training,
+            lambda: tf.nn.dropout(_input, keep_prob),
+            lambda: _input
+        )
+    else:
+        output = _input
+    return output
+
+
+
+def bottleneck(is_training,_input, out_features,keep_prob):
+    with tf.variable_scope("bottleneck"):
+        output = batch_norm(_input)
+        output = tf.nn.relu(output)
+        inter_features = out_features * 4
+        output = conv2d_denseNet(
+            output, out_features=inter_features, kernel_size=1,
+            padding='VALID')
+        output = dropout(output,keep_prob,is_training)
+    return output
+
+def avg_pool(_input, k):
+    ksize = [1, k, k, 1]
+    strides = [1, k, k, 1]
+    padding = 'VALID'
+    output = tf.nn.avg_pool(_input, ksize, strides, padding)
+    return output
+
+
+def transition_layer(_input,reduction, is_training,keep_prob,):
+    """Call H_l composite function with 1x1 kernel and after average
+    pooling
+    """
+    # call composite function with 1x1 kernel
+    out_features = int(int(_input.get_shape()[-1]) * reduction)
+    output = composite_function(
+        _input, out_features=out_features, is_training=is_training, keep_prob=keep_prob, kernel_size=1)
+    # run average pooling
+    output = avg_pool(output, k=2)
+    return output
+
+def bias_variable(shape, name='bias'):
+    initial = tf.constant(0.0, shape=shape)
+    return tf.get_variable(name, initializer=initial)
+
+
+def weight_variable_xavier(shape, name):
+    return tf.get_variable(
+        name,
+        shape=shape,
+        initializer=tf.contrib.layers.xavier_initializer())
+
+
+def transition_layer_to_classes(_input, n_classes,_is_train):
+    """This is last transition to get probabilities by classes. It perform:
+    - batch normalization
+    - ReLU nonlinearity
+    - wide average pooling
+    - FC layer multiplication
+    """
+    # BN
+    output = batch_norm(_input,_is_train)
+    # ReLU
+    output = tf.nn.relu(output)
+    # average pooling
+    last_pool_kernel = min(int(output.get_shape()[-2]),int(output.get_shape()[-3]))
+    output = avg_pool(output, k=last_pool_kernel)
+    # FC
+    features_total = int(output.get_shape()[-1])
+    output = tf.reshape(output, [-1, features_total])
+    W = weight_variable_xavier(
+        [features_total, n_classes], name='W')
+    bias = bias_variable([n_classes])
+    logits = tf.matmul(output, W) + bias
+    return logits
+
+
+
+def add_internal_layer(keep_prob, is_training,_input, growth_rate,bc_mode):
+    """Perform H_l composite function for the layer and after concatenate
+    input with output from composite function.
+    """
+    # call composite function with 3x3 kernel
+    if not bc_mode:
+        comp_out = composite_function(
+            _input, out_features=growth_rate, is_training=is_training, keep_prob=keep_prob, kernel_size=3)
+    elif bc_mode:
+        bottleneck_out = bottleneck(is_training,_input, out_features=growth_rate,keep_prob=keep_prob)
+        comp_out = composite_function(
+            bottleneck_out, out_features=growth_rate, is_training=is_training, keep_prob=keep_prob, kernel_size=3)
+    # concatenate _input with out from composite function
+    if TF_VERSION >= 1.0:
+        output = tf.concat(axis=3, values=(_input, comp_out))
+    else:
+        output = tf.concat(3, (_input, comp_out))
+    return output
+
+def add_block(keep_prob, is_training,_input, growth_rate, layers_per_block,bc_mode):
+    """Add N H_l internal layers"""
+    output = _input
+    for layer in range(layers_per_block):
+        with tf.variable_scope("layer_%d" % layer):
+            output = add_internal_layer(keep_prob,is_training, output, growth_rate,bc_mode)
+    return output
+
+
+
+def weight_variable_msra(shape, name):
+    return tf.get_variable(
+        name=name,
+        shape=shape,
+        initializer=tf.contrib.layers.variance_scaling_initializer())
+
+def conv3d_denseNet(_input, out_features, kernel_size,
+                    strides=[1, 1, 1, 1,1], padding='SAME'):
+    in_features = int(_input.get_shape()[-1])
+    kernel = weight_variable_msra(
+        [kernel_size, kernel_size,kernel_size, in_features, out_features],
+        name='kernel')
+    output = tf.nn.conv3d(_input, kernel, strides, padding)
+    return output
+
+
+
+def conv2d_denseNet(_input, out_features, kernel_size,
+               strides=[1, 1, 1, 1], padding='SAME'):
+        in_features = int(_input.get_shape()[-1])
+        kernel = weight_variable_msra(
+            [kernel_size, kernel_size, in_features, out_features],
+            name='kernel')
+        output = tf.nn.conv2d(_input, kernel, strides, padding)
+        return output
 
 def deconv2d(input, output_shape, is_train, info=False, k=3, s=2, stddev=0.01, 
              activation_fn=tf.nn.relu, norm='batch', name='deconv2d'):
@@ -174,7 +343,7 @@ def grouped_conv2d_GsoP(input, num_outputs, groups, is_train=True, info=False, a
         if info: print_info(name, _.get_shape().as_list(),activation_fn=None)
     return _
 
-def batch_norm(x):
+def batch_norm_GAN(x):
     epsilon = 1e-3
     batch_mean, batch_var = tf.nn.moments(x, [1])
     return tf.nn.batch_normalization(x, batch_mean, batch_var, offset=None, scale=None, variance_epsilon=epsilon)
