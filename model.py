@@ -14,14 +14,12 @@ import numpy as np
 class Model(object):
 
     def __init__(self, config, growth_rate, depth,
-                 total_blocks, keep_prob, num_inter_threads, num_intra_threads,
-                 weight_decay, nesterov_momentum, model_type, dataset,
-                 should_save_logs, should_save_model,
+                 total_blocks, keep_prob,
+                  nesterov_momentum, model_type,
                  debug_information=False,
                  is_train=True,
-                 renew_logs=False,
                  reduction=1.0,
-                 bc_mode=False,**kwargs):
+                 bc_mode=False):
         self.debug = debug_information
 
         self.config = config
@@ -31,19 +29,15 @@ class Model(object):
         self.c = self.config.c
         self.num_class = self.config.num_class
         self.n_z = config.n_z
-        self.norm_type = config.norm_type
-        self.deconv_type = config.deconv_type
+
 
         # create placeholders for the input
 
-        self.recon_weight = tf.placeholder_with_default(
-            tf.cast(1.0, tf.float32), [])
-        tf.summary.scalar("loss/recon_wieght", self.recon_weight)
+
+        # tf.summary.scalar("loss/recon_wieght", self.recon_weight)
 
         self.depth = depth
         self.growth_rate = growth_rate
-        self.num_inter_threads = num_inter_threads
-        self.num_intra_threads = num_intra_threads
         # how many features will be received after first convolution
         # value the same as in the original Torch code
         self.first_output_features = growth_rate * 2
@@ -65,22 +59,21 @@ class Model(object):
         print("Reduction at transition layers: %.1f" % self.reduction)
 
         self.keep_prob = keep_prob
-        self.weight_decay = weight_decay
+
         self.nesterov_momentum = nesterov_momentum
         self.model_type = model_type
-        self.dataset_name = dataset
-        self.should_save_logs = should_save_logs
-        self.should_save_model = should_save_model
-        self.renew_logs = renew_logs
-        self.batches_step = 0
+
+        # self.batches_step = 0
 
         self.images = tf.placeholder(
             name='input_images', dtype=tf.float32,
-            shape=[self.batch_size, self.h, self.w, self.c],
+            shape=[self.batch_size, self.h, self.w, self.c,1],
         )
         self.labels = tf.placeholder(
             name='labels', dtype=tf.float32, shape=[self.batch_size, self.num_class],
         )
+
+
 
         self.learning_rate = tf.placeholder(
             tf.float32,
@@ -92,18 +85,21 @@ class Model(object):
 
         self.build(is_train=is_train)
 
-    def get_feed_dict(self, batch_chunk, step=None, is_training=None):
+    def get_feed_dict(self, batch_chunk, is_training=None):
         fd = {
-            self.image: batch_chunk['image'],  # [bs, h, w, c]
-            self.label: batch_chunk['label'],  # [bs, n]
+            self.images: batch_chunk['image'],  # [bs, h, w, c]
+            self.labels: batch_chunk['label'],  # [bs, n]
         }
         if is_training is not None:
             fd[self.is_training] = is_training
 
         # Weight annealing
-        if step is not None:
-            fd[self.recon_weight] = min(max(0, (1500 - step) / 1500), 1.0)*10
+        # if step is not None:
+        #     fd[self.recon_weight] = min(max(0, (1500 - step) / 1500), 1.0)*10
         return fd
+
+
+
 
 
 
@@ -113,7 +109,7 @@ class Model(object):
 
         # build loss and accuracy {{{
         def build_loss(prediction, logits):
-            alpha = 0.9
+            # alpha = 0.9
 
             # Discriminator/classifier loss
             cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
@@ -131,16 +127,15 @@ class Model(object):
 
         # Discriminator {{{
         # =========
-        D = Discriminator('Discriminator', self.num_class, self.norm_type,self.h, self.w, self.c,self.growth_rate, self.depth,
-                 self.total_blocks, self.keep_prob, self.num_inter_threads, self.num_intra_threads,
-                 self.weight_decay, self.nesterov_momentum, self.model_type,
-                 self.should_save_logs, self.should_save_model,
-                 debug_information=False,
+        D = Discriminator('Discriminator', self.num_class,self.h, self.w, self.c,self.growth_rate, self.depth,
+                 self.total_blocks, self.keep_prob,
+                  self.model_type,
                  is_train=True,
-                 renew_logs=self.renew_logs,
                  reduction=self.reduction,
                  bc_mode=self.bc_mode)
         prediction, logits = D(self.images)
+        self.all_preds = prediction
+        self.all_targets = self.labels
 
         # }}}
 
@@ -148,7 +143,7 @@ class Model(object):
             build_loss(prediction, logits)
 
         tf.summary.scalar("loss/accuracy", self.accuracy)
-        tf.summary.scalar("loss/correct_prediction",  self.correct_prediction)
+        # tf.summary.scalar("loss/correct_prediction",  self.correct_prediction)
         tf.summary.scalar("loss/cross_entropy", self.cross_entropy)
         # tf.summary.scalar("loss/d_loss", tf.reduce_mean(self.d_loss))
         # tf.summary.scalar("loss/d_loss_real", tf.reduce_mean(d_loss_real))

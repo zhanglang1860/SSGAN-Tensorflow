@@ -114,7 +114,7 @@ def composite_function(_input, out_features, is_training,keep_prob,kernel_size=3
         # ReLU
         output = tf.nn.relu(output)
         # convolution
-        output = conv2d_denseNet(
+        output = conv3d_denseNet(
             output, out_features=out_features, kernel_size=kernel_size)
         # dropout(in case of training and in case it is no 1.0)
         output = dropout(output,keep_prob,is_training)
@@ -135,24 +135,33 @@ def dropout(_input,keep_prob,is_training):
 
 def bottleneck(is_training,_input, out_features,keep_prob):
     with tf.variable_scope("bottleneck"):
-        output = batch_norm(_input)
+        output = batch_norm(_input, is_training)
         output = tf.nn.relu(output)
         inter_features = out_features * 4
-        output = conv2d_denseNet(
+        output = conv3d_denseNet(
             output, out_features=inter_features, kernel_size=1,
             padding='VALID')
         output = dropout(output,keep_prob,is_training)
     return output
 
 def avg_pool(_input, k):
-    ksize = [1, k, k, 1]
-    strides = [1, k, k, 1]
+    ksize = [1, k, k, k,1]
+    strides = [1, k, k,k, 1]
     padding = 'VALID'
-    output = tf.nn.avg_pool(_input, ksize, strides, padding)
+    output = tf.nn.avg_pool3d(_input, ksize, strides, padding)
     return output
 
 
-def transition_layer(_input,reduction, is_training,keep_prob,):
+def avg_pool_final(_input, a,b,c):
+    ksize = [1, a,b,c,1]
+    strides = [1, a,b,c, 1]
+    padding = 'VALID'
+    output = tf.nn.avg_pool3d(_input, ksize, strides, padding)
+    return output
+
+
+
+def transition_layer(_input,is_training,keep_prob,reduction):
     """Call H_l composite function with 1x1 kernel and after average
     pooling
     """
@@ -188,8 +197,10 @@ def transition_layer_to_classes(_input, n_classes,_is_train):
     # ReLU
     output = tf.nn.relu(output)
     # average pooling
-    last_pool_kernel = min(int(output.get_shape()[-2]),int(output.get_shape()[-3]))
-    output = avg_pool(output, k=last_pool_kernel)
+    # last_pool_kernel = 7
+    # output = avg_pool(output, k=last_pool_kernel)
+    output = avg_pool_final(_input, output.get_shape()[1], output.get_shape()[2], output.get_shape()[3])
+
     # FC
     features_total = int(output.get_shape()[-1])
     output = tf.reshape(output, [-1, features_total])
@@ -215,9 +226,9 @@ def add_internal_layer(keep_prob, is_training,_input, growth_rate,bc_mode):
             bottleneck_out, out_features=growth_rate, is_training=is_training, keep_prob=keep_prob, kernel_size=3)
     # concatenate _input with out from composite function
     if TF_VERSION >= 1.0:
-        output = tf.concat(axis=3, values=(_input, comp_out))
+        output = tf.concat(axis=4, values=(_input, comp_out))
     else:
-        output = tf.concat(3, (_input, comp_out))
+        output = tf.concat(4, (_input, comp_out))
     return output
 
 def add_block(keep_prob, is_training,_input, growth_rate, layers_per_block,bc_mode):
@@ -235,6 +246,25 @@ def weight_variable_msra(shape, name):
         name=name,
         shape=shape,
         initializer=tf.contrib.layers.variance_scaling_initializer())
+
+def conv3d_denseNet(_input, out_features, kernel_size,
+                    strides=[1, 1, 1, 1,1], padding='SAME'):
+    in_features = int(_input.get_shape()[-1])
+    kernel = weight_variable_msra(
+        [kernel_size, kernel_size,kernel_size, in_features, out_features],
+        name='kernel')
+    output = tf.nn.conv3d(_input, filter = kernel, strides = strides, padding = padding)
+    return output
+
+
+def conv3d_denseNet_first_layer(_input, out_features, kernel_size,
+                    strides=[1, 2, 2,2,1], padding='SAME'):
+    in_features = int(_input.get_shape()[-1])
+    kernel = weight_variable_msra(
+        [kernel_size, kernel_size,kernel_size, in_features, out_features],
+        name='kernel')
+    output = tf.nn.conv3d(_input, filter = kernel, strides = strides, padding = padding)
+    return output
 
 def conv2d_denseNet(_input, out_features, kernel_size,
                strides=[1, 1, 1, 1], padding='SAME'):

@@ -7,6 +7,36 @@ import numpy as np
 import h5py
 from util import log
 from sklearn.model_selection import KFold
+import random
+
+
+def augment_image(image, pad):
+    """Perform zero padding, randomly crop image to original size,
+    maybe mirror horizontally"""
+    flip = random.getrandbits(1)
+    if flip:
+        image = image[:, ::-1, :]
+    init_shape = image.shape
+    new_shape = [init_shape[0] + pad * 2,
+                 init_shape[1] + pad * 2,
+                 init_shape[2]]
+    zeros_padded = np.zeros(new_shape)
+    zeros_padded[pad:init_shape[0] + pad, pad:init_shape[1] + pad, :] = image
+    # randomly crop to original size
+    init_x = np.random.randint(0, pad * 2)
+    init_y = np.random.randint(0, pad * 2)
+    cropped = zeros_padded[
+              init_x: init_x + init_shape[0],
+              init_y: init_y + init_shape[1],
+              :]
+    return cropped
+
+
+def augment_all_images(initial_images, pad):
+    new_images = np.zeros(initial_images.shape)
+    for i in range(initial_images.shape[0]):
+        new_images[i] = augment_image(initial_images[i], pad=4)
+    return new_images
 
 
 class Dataset(object):
@@ -28,13 +58,62 @@ class Dataset(object):
 
         self.data = h5py.File(file, 'r')
         log.info("Reading Done: %s", file)
+        self._batch_counter = 0
+
 
 
     def get_data(self, id):
         # preprocessing and data augmentation
-        img = self.data[id]['image'].value / 255. * 2 - 1
+        img = self.data[id]['image'].value / 255.
         l = self.data[id]['label'].value.astype(np.float32)
         return img, l
+
+
+
+
+
+    # def start_new_epoch(self):
+    #     self._batch_counter = 0
+    #     # if self.shuffle_every_epoch:
+    #     #     images, labels = self.shuffle_images_and_labels(
+    #     #         self.images, self.labels)
+    #     # else:
+    #     images, labels = self.images, self.labels
+    #     # if self.augmentation:
+    #     #     images = augment_all_images(images, pad=4)
+    #     self.epoch_images = images
+    #     self.epoch_labels = labels
+
+
+
+    def next_batch(self, batch_size):
+        start = self._batch_counter * batch_size
+        end = min((self._batch_counter + 1) * batch_size,len(self.ids))
+        self._batch_counter += 1
+        id_slice = self._ids[start: end]
+        images_slice = []
+        labels_slice = []
+
+        for each_id in id_slice:
+            each_images_slice,each_labels_slice= self.get_data(each_id)
+            shape_list=each_images_slice.shape
+            each_images_slice=np.reshape(each_images_slice, (shape_list[0],shape_list[1],shape_list[2],1))
+            images_slice.append(each_images_slice)
+            labels_slice.append(each_labels_slice)
+
+        labels_slice = np.array(labels_slice, dtype=np.float32)
+        images_slice = np.array(images_slice, dtype=np.float32)
+        # if images_slice.shape[0] != batch_size:
+        #     self.start_new_epoch()
+        #     return self.next_batch(batch_size)
+        # else:
+        return images_slice, labels_slice
+
+    @property
+    def num_examples(self):
+        return len(self.ids)
+
+
 
     @property
     def ids(self):
@@ -50,7 +129,7 @@ class Dataset(object):
         )
 
 
-def create_default_splits(path, hdf5FileName,idFileName,cross_validation_number=10):
+def create_default_splits(path, hdf5FileName,idFileName,cross_validation_number):
     dataset_train, dataset_test = all_ids(path,hdf5FileName,idFileName,cross_validation_number)
     return dataset_train, dataset_test
 

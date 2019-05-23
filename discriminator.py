@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import numpy as np
 import tensorflow as tf
-from ops import conv2d_denseNet
+from ops import conv3d_denseNet
 from ops import add_block
 from util import log
 from ops import depthwise_conv2d
@@ -9,21 +9,26 @@ from ops import fc
 from ops import transition_layer
 from ops import transition_layer_to_classes
 from ops import grouped_conv2d_Discriminator_one
-
+from ops import conv3d_denseNet_first_layer
 
 
 class Discriminator(object):
-    def __init__(self,name, num_class, norm_type, h, w, c, growth_rate, depth,
-        total_blocks, keep_prob, num_inter_threads, num_intra_threads,
-        weight_decay, nesterov_momentum, model_type,
-        should_save_logs, should_save_model, debug_information=False,
+    def __init__(self,
+                 name,
+                 num_class,
+                 h,
+                 w,
+                 c,
+                 growth_rate,
+                 depth,
+        total_blocks,
+                 keep_prob,
+         model_type,
                  is_train=True,
-                 renew_logs=False,
                  reduction=1.0,
                  bc_mode=False):
         self.name = name
         self._num_class = num_class
-        self._norm_type = norm_type
         self._is_train = is_train
         self._reuse = False
         self._h = h
@@ -31,8 +36,6 @@ class Discriminator(object):
         self._c = c
         self.depth = depth
         self.growth_rate = growth_rate
-        self.num_inter_threads = num_inter_threads
-        self.num_intra_threads = num_intra_threads
         # how many features will be received after first convolution
         # value the same as in the original Torch code
         self.first_output_features = growth_rate * 2
@@ -54,15 +57,8 @@ class Discriminator(object):
         print("Reduction at transition layers: %.1f" % self.reduction)
 
         self.keep_prob = keep_prob
-        self.weight_decay = weight_decay
-
         self.model_type = model_type
 
-
-        self.should_save_logs = should_save_logs
-        self.should_save_model = should_save_model
-        self.renew_logs = renew_logs
-        self.batches_step = 0
 
 
 
@@ -77,7 +73,7 @@ class Discriminator(object):
             layers_per_block = self.layers_per_block
             # first - initial 3 x 3 conv to first_output_features
             with tf.variable_scope("Initial_convolution"):
-                output = conv2d_denseNet(
+                output = conv3d_denseNet_first_layer(
                     input,
                     out_features=self.first_output_features,
                     kernel_size=3)
