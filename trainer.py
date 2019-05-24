@@ -470,7 +470,7 @@ class Trainer(object):
 
             if epoch % self.config.write_summary_step == 0:
                 self.summary_writer.add_summary(total_summary, global_step=step)
-
+              # this checkpoint seems something wrong
             if epoch % self.config.output_save_step == 0:
                 log.infov("Saved checkpoint at %d", epoch)
                 save_path = self.saver.save(self.session, os.path.join(self.train_dir, 'model'), global_step=step)

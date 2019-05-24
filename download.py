@@ -205,7 +205,7 @@ def download_ulna(download_path):
     hdf5_path = os.path.join(data_dir, '/data.hdf5')
     all_jpg_path=os.path.join(data_dir, 'all')
     all_jpg_path = os.path.join(all_jpg_path, '/*.jpg')
-    all_jpg_path = '/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/ulna/all/*.jpg'
+    all_jpg_path = '/data1/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/ulna/all/*.jpg'
 
     if check_file(data_dir):
         print('ulna was downloaded.')
@@ -269,7 +269,7 @@ def download_mri2_class(download_path):
 
     data_dir = os.path.join(download_path, 'mri')
 
-    all_jpg_path = '/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/all/'
+    all_jpg_path = '/data1/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/all/'
 
     if check_file(data_dir):
         print('mri was downloaded.')
@@ -288,7 +288,7 @@ def download_mri2_class(download_path):
         image_class_list[i] = []
         label_class_list[i] = []
 
-    with open("/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/label.csv") as file:
+    with open("/data1/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/label.csv") as file:
         for line in file:
             strFull = line.split(',')
             strFull[0]=strFull[0]+'.nii'
@@ -348,7 +348,7 @@ def download_mri3_class(download_path):
     data_dir = os.path.join(download_path, 'mri')
     hdf5_path = os.path.join(data_dir, '/data.hdf5')
 
-    all_jpg_path = '/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/all/'
+    all_jpg_path = '/data1/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/all/'
 
     if check_file(data_dir):
         print('ulna was downloaded.')
@@ -357,7 +357,7 @@ def download_mri3_class(download_path):
 
     addrs = []
     labels = []
-    with open("/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/label.csv") as file:
+    with open("/data1/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/label.csv") as file:
         for line in file:
             strFull = line.split(',')
             strFull[0]=strFull[0]+'.nii'
@@ -457,7 +457,7 @@ def download_cifar10(download_path):
         fd = os.path.join(target_path, 'data_batch_' + str(i + 1))
         dict = unpickle(fd)
 
-        sys.stdout = Logger(r'/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-original-Tensorflow/a.txt')
+        sys.stdout = Logger(r'/data1/wenyu/PycharmProjects/SSGAN-original-Tensorflow/a.txt')
         print(dict)
         print('------------------')
 
@@ -502,7 +502,7 @@ class Logger(object):
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    path = r"/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets"
+    path = r"/data1/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets"
     if not os.path.exists(path): os.mkdir(path)
 
     download_mri2_class(path)

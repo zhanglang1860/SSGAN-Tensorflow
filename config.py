@@ -33,7 +33,7 @@ def argparser(is_train=True):
     # log
     parser.add_argument('--log_step', type=int, default=10)
     parser.add_argument('--write_summary_step', type=int, default=100)
-    parser.add_argument('--batch_size', type=int, default= 10)
+    parser.add_argument('--batch_size', type=int, default= 2)
     parser.add_argument('--ckpt_save_step', type=int, default=50)
     parser.add_argument('--test_sample_step', type=int, default=100)
     parser.add_argument('--output_save_step', type=int, default=50)
@@ -127,7 +127,7 @@ def argparser(is_train=True):
 
 
 
-    dataset_path = os.path.join(r"/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/")
+    dataset_path = os.path.join(r"/data1/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/")
 
     dataset_train, dataset_test = dataset.create_default_splits(dataset_path,hdf5FileName=config.hdf5FileName,idFileName=config.idFileName,cross_validation_number=config.cross_validation_number)
     #dataset_train, dataset_test are 10 cross validation data.
