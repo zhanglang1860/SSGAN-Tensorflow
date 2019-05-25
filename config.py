@@ -1,5 +1,6 @@
 import argparse
 import os
+import tensorflow as tf
 
 from model import Model
 import datasets.hdf5_loader as dataset
@@ -33,10 +34,10 @@ def argparser(is_train=True):
     # log
     parser.add_argument('--log_step', type=int, default=10)
     parser.add_argument('--write_summary_step', type=int, default=100)
-    parser.add_argument('--batch_size', type=int, default= 2)
+    parser.add_argument('--batch_size', type=int, default= 16)
     parser.add_argument('--ckpt_save_step', type=int, default=50)
     parser.add_argument('--test_sample_step', type=int, default=100)
-    parser.add_argument('--output_save_step', type=int, default=50)
+    parser.add_argument('--output_save_step', type=int, default=10)
     # learning
     parser.add_argument('--max_sample', type=int, default=5000,
                         help='num of samples the model can see')
@@ -123,15 +124,19 @@ def argparser(is_train=True):
 
 
     print("Prepare training data...")
+    with tf.device('/cpu:0'):
+        dataset_path = os.path.join(r"/data1/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/")
+
+        dataset_train, dataset_test = dataset.create_default_splits(dataset_path, hdf5FileName=config.hdf5FileName,
+                                                                    idFileName=config.idFileName,
+                                                                    cross_validation_number=config.cross_validation_number)
+        # dataset_train, dataset_test are 10 cross validation data.
+        # dataset_train[i] is the i-th fold data
 
 
 
 
-    dataset_path = os.path.join(r"/data1/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/")
 
-    dataset_train, dataset_test = dataset.create_default_splits(dataset_path,hdf5FileName=config.hdf5FileName,idFileName=config.idFileName,cross_validation_number=config.cross_validation_number)
-    #dataset_train, dataset_test are 10 cross validation data.
-    #dataset_train[i] is the i-th fold data
     print("step2")
     img, label = dataset_train[0].get_data(dataset_train[0].ids[0])
 
@@ -148,9 +153,13 @@ def argparser(is_train=True):
     config.num_class = label.shape[0]
 
     # --- create model ---
-    model = Model(config, config.growth_rate, config.depth,
-    config.total_blocks, config.keep_prob,
-    config.nesterov_momentum, config.model_type, debug_information=config.debug, is_train=is_train,
-    reduction = config.reduction,
-    bc_mode = config.bc_mode)
+    with tf.device('/cpu:0'):
+        model = Model(config, config.growth_rate, config.depth,
+                      config.total_blocks, config.keep_prob,
+                      config.nesterov_momentum, config.model_type, debug_information=config.debug, is_train=is_train,
+                      reduction=config.reduction,
+                      bc_mode=config.bc_mode)
+
+
+
     return config, model, dataset_train, dataset_test

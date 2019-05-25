@@ -85,6 +85,29 @@ class Dataset(object):
     #     self.epoch_labels = labels
 
 
+    def all_images_labels(self):
+        id_slice = self._ids
+        images_slice = []
+        labels_slice = []
+
+        for each_id in id_slice:
+            each_images_slice,each_labels_slice= self.get_data(each_id)
+            shape_list=each_images_slice.shape
+            each_images_slice=np.reshape(each_images_slice, (shape_list[0],shape_list[1],shape_list[2],1))
+            images_slice.append(each_images_slice)
+            labels_slice.append(each_labels_slice)
+
+        labels_slice = np.array(labels_slice, dtype=np.float32)
+        images_slice = np.array(images_slice, dtype=np.float32)
+        # if images_slice.shape[0] != batch_size:
+        #     self.start_new_epoch()
+        #     return self.next_batch(batch_size)
+        # else:
+        return images_slice, labels_slice
+
+
+
+
 
     def next_batch(self, batch_size):
         start = self._batch_counter * batch_size

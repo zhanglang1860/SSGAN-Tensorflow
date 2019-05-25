@@ -65,7 +65,7 @@ class Discriminator(object):
 
 
     def __call__(self, input):
-        with tf.variable_scope(self.name, reuse=self._reuse):
+        with tf.variable_scope(self.name, reuse=self._reuse) as scope:
             if not self._reuse:
                 print('\033[93m'+self.name+'\033[0m')
 

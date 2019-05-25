@@ -2,12 +2,16 @@ import tensorflow as tf
 import tensorflow.contrib.layers as layers
 import tensorflow.contrib.slim as slim
 import numpy as np
+import re
 from util import log
 from tensorflow_extentions import grouped_convolution
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import array_ops
 
-
+# If a model is trained with multiple GPUs, prefix all Op names with tower_name
+# to differentiate the operations. Note that this prefix is removed from the
+# names of the summaries when visualizing a model.
+TOWER_NAME = 'tower'
 
 
 
@@ -99,6 +103,24 @@ def batch_norm(_input,is_training):
         updates_collections=None)
     return output
 
+def _activation_summary(x):
+  """Helper to create summaries for activations.
+
+  Creates a summary that provides a histogram of activations.
+  Creates a summary that measures the sparsity of activations.
+
+  Args:
+    x: Tensor
+  Returns:
+    nothing
+  """
+  # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
+  # session. This helps the clarity of presentation on tensorboard.
+  tensor_name = re.sub('%s_[0-9]*/' % TOWER_NAME, '', x.op.name)
+  tf.summary.histogram(tensor_name + '/activations', x)
+  tf.summary.scalar(tensor_name + '/sparsity',
+                                       tf.nn.zero_fraction(x))
+
 
 
 def composite_function(_input, out_features, is_training,keep_prob,kernel_size=3):
@@ -118,6 +140,7 @@ def composite_function(_input, out_features, is_training,keep_prob,kernel_size=3
             output, out_features=out_features, kernel_size=kernel_size)
         # dropout(in case of training and in case it is no 1.0)
         output = dropout(output,keep_prob,is_training)
+        _activation_summary(output)
     return output
 
 def dropout(_input,keep_prob,is_training):
@@ -142,6 +165,7 @@ def bottleneck(is_training,_input, out_features,keep_prob):
             output, out_features=inter_features, kernel_size=1,
             padding='VALID')
         output = dropout(output,keep_prob,is_training)
+        _activation_summary(output)
     return output
 
 def avg_pool(_input, k):
@@ -171,6 +195,7 @@ def transition_layer(_input,is_training,keep_prob,reduction):
         _input, out_features=out_features, is_training=is_training, keep_prob=keep_prob, kernel_size=1)
     # run average pooling
     output = avg_pool(output, k=2)
+    _activation_summary(output)
     return output
 
 def bias_variable(shape, name='bias'):
@@ -204,12 +229,13 @@ def transition_layer_to_classes(_input, n_classes,_is_train):
     # FC
     features_total = int(output.get_shape()[-1])
     output = tf.reshape(output, [-1, features_total])
-    W = weight_variable_xavier(
-        [features_total, n_classes], name='W')
-    bias = bias_variable([n_classes])
+    W = _variable_with_weight_decay('weights', [features_total, n_classes],
+                                          stddev=0.01, wd=None)
+    bias = _variable_on_cpu('biases', [n_classes],
+                              tf.constant_initializer(0.0))
     logits = tf.matmul(output, W) + bias
+    _activation_summary(logits)
     return logits
-
 
 
 def add_internal_layer(keep_prob, is_training,_input, growth_rate,bc_mode):
@@ -250,20 +276,71 @@ def weight_variable_msra(shape, name):
 def conv3d_denseNet(_input, out_features, kernel_size,
                     strides=[1, 1, 1, 1,1], padding='SAME'):
     in_features = int(_input.get_shape()[-1])
-    kernel = weight_variable_msra(
-        [kernel_size, kernel_size,kernel_size, in_features, out_features],
-        name='kernel')
+    kernel = _variable_with_weight_decay('3dConvKernelWeights',
+                                         shape=[kernel_size, kernel_size,kernel_size, in_features, out_features],
+                                         stddev=0.01,
+                                         wd=None)
+
     output = tf.nn.conv3d(_input, filter = kernel, strides = strides, padding = padding)
     return output
+
+
+
+def _variable_on_cpu(name, shape, initializer):
+  """Helper to create a Variable stored on CPU memory.
+
+  Args:
+    name: name of the variable
+    shape: list of ints
+    initializer: initializer for Variable
+
+  Returns:
+    Variable Tensor
+  """
+  with tf.device('/cpu:0'):
+    dtype = tf.float16
+    var = tf.get_variable(name, shape, initializer=initializer, dtype=dtype)
+  return var
+
+
+def _variable_with_weight_decay(name, shape, stddev, wd):
+  """Helper to create an initialized Variable with weight decay.
+
+  Note that the Variable is initialized with a truncated normal distribution.
+  A weight decay is added only if one is specified.
+
+  Args:
+    name: name of the variable
+    shape: list of ints
+    stddev: standard deviation of a truncated Gaussian
+    wd: add L2Loss weight decay multiplied by this float. If None, weight
+        decay is not added for this Variable.
+
+  Returns:
+    Variable Tensor
+  """
+  dtype = tf.float16
+  var = _variable_on_cpu(
+      name,
+      shape,
+      tf.truncated_normal_initializer(stddev=stddev, dtype=dtype))
+  if wd is not None:
+    weight_decay = tf.multiply(tf.nn.l2_loss(var), wd, name='weight_loss')
+    tf.add_to_collection('losses', weight_decay)
+  return var
+
+
 
 
 def conv3d_denseNet_first_layer(_input, out_features, kernel_size,
                     strides=[1, 2, 2,2,1], padding='SAME'):
     in_features = int(_input.get_shape()[-1])
-    kernel = weight_variable_msra(
-        [kernel_size, kernel_size,kernel_size, in_features, out_features],
-        name='kernel')
+    kernel = _variable_with_weight_decay('kernel_weights',
+                                         shape=[kernel_size, kernel_size,kernel_size, in_features, out_features],
+                                         stddev=0.01,
+                                         wd=None)
     output = tf.nn.conv3d(_input, filter = kernel, strides = strides, padding = padding)
+    _activation_summary(output)
     return output
 
 def conv2d_denseNet(_input, out_features, kernel_size,

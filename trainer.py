@@ -32,6 +32,7 @@ from sklearn.metrics import roc_auc_score
 
 
 
+
 train_params_MRI = {
     'batch_size': 3,
     'n_epochs': 10000,
@@ -265,20 +266,54 @@ class Trainer(object):
             self.saver.restore(self.session, self.ckpt_path)
             log.info("Loaded the pretrain parameters from the provided checkpoint path")
 
+    def tower_loss(scope, images, labels):
+        """Calculate the total loss on a single tower running the CIFAR model.
+
+          Args:
+            scope: unique prefix string identifying the CIFAR tower, e.g. 'tower_0'
+            images: Images. 4D tensor of shape [batch_size, height, width, 3].
+            labels: Labels. 1D tensor of shape [batch_size].
+
+          Returns:
+             Tensor of shape [] containing the total loss for a batch of data
+          """
+
+        # Build inference Graph.
+        self.model.cross_entropy
+
+
 
 
     def train_one_epoch_denseNet(self, data, batch_size, learning_rate):
         _start_time = time.time()
+        num_gpus = 2
+        with tf.Graph().as_default(), tf.device('/cpu:0'):
+            _, batch_train = create_input_ops(
+                data, batch_size)
+            images, labels = batch_train['image'], batch_train['label']
+            batch_queue = tf.contrib.slim.prefetch_queue.prefetch_queue(
+                [images, labels], capacity=2 * num_gpus)
+            with tf.variable_scope(tf.get_variable_scope()):
+                for i in xrange(num_gpus):
+                    with tf.device('/gpu:%d' % i):
+                        with tf.name_scope('MRI_gpu_%d' % (i)) as scope:
+                            # Dequeues one batch for the GPU
+                            image_batch, label_batch = batch_queue.dequeue()
+                            # Calculate the loss for one tower of the CIFAR model. This function
+                            # constructs the entire CIFAR model but shares the variables across
+                            # all towers.
+                            loss = self.tower_loss(scope, image_batch, label_batch)
+                            # Reuse variables for the next tower.
+                            tf.get_variable_scope().reuse_variables()
         num_examples = data.num_examples
         total_loss = []
         total_accuracy = []
-        total_summary = []
         data._batch_counter = 0
 
         iteration_time=num_examples // batch_size
         for i in range(iteration_time):
-            batch = data.next_batch(batch_size)
-            images, labels = batch
+            batch =
+            images, labels = data.all_images_labels()
             feed_dict = {
                 self.model.images: images,
                 self.model.labels: labels,
@@ -359,7 +394,7 @@ class Trainer(object):
 
 
     def train_one_fold_all_epoches(self,dataset_train,train_params, whichFoldData):
-        self.global_step = tf.contrib.framework.get_or_create_global_step(graph=None)
+        # self.global_step = tf.contrib.framework.get_or_create_global_step(graph=None)
 
 
 
@@ -405,8 +440,10 @@ class Trainer(object):
         session_config = tf.ConfigProto(
             allow_soft_placement=True,
             gpu_options=tf.GPUOptions(allow_growth=True),
-            device_count={'GPU': 1},
+            device_count={'GPU': 2},
         )
+
+        session_config.gpu_options.allocator_type='BFC'
         self.session = self.supervisor.prepare_or_wait_for_session(config=session_config)
 
         self.checkpoint = self.config.checkpoint
@@ -439,7 +476,7 @@ class Trainer(object):
 
 
         # pprint(self.batch_train)
-        step = self.session.run(self.global_step)
+        # step = self.session.run(self.global_step)
 
         for epoch in xrange(self.config.max_training_steps):
             self.batches_step = 0
@@ -754,8 +791,6 @@ def calculateConfusionMatrix(each_result_file_name):
 
 
 
-
-
 def main():
 
 
@@ -766,6 +801,7 @@ def main():
     print("    FoldData" + str(whichFoldData))
 
     config, model, dataset_train, dataset_test = argparser(is_train=True)
+
     trainer = Trainer(config, model)
 
     log.warning("dataset: %s, learning_rate_g: %f, learning_rate_d: %f",

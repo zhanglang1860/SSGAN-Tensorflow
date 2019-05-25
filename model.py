@@ -112,14 +112,15 @@ class Model(object):
             # alpha = 0.9
 
             # Discriminator/classifier loss
-            cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
-                logits=logits, labels=self.labels))
+            cross_entropy_mean = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
+                logits=logits, labels=self.labels, name='cross_entropy_per_example'), name='cross_entropy')
+            tf.add_to_collection('losses', cross_entropy_mean)
 
             correct_prediction = tf.equal(
                 tf.argmax(prediction, 1),
                 tf.argmax(self.labels, 1))
             accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-            return cross_entropy, correct_prediction, accuracy
+            return cross_entropy_mean, correct_prediction, accuracy, tf.add_n(tf.get_collection('losses'), name='total_loss')
         # }}}
 
 
@@ -139,10 +140,10 @@ class Model(object):
 
         # }}}
 
-        self.cross_entropy, self.correct_prediction, self.accuracy = \
+        self.cross_entropy, self.correct_prediction, self.accuracy, _ = \
             build_loss(prediction, logits)
 
-        tf.summary.scalar("loss/accuracy", self.accuracy)
+        tf.summary.scalar("accuracy", self.accuracy)
         # tf.summary.scalar("loss/correct_prediction",  self.correct_prediction)
         tf.summary.scalar("loss/cross_entropy", self.cross_entropy)
         # tf.summary.scalar("loss/d_loss", tf.reduce_mean(self.d_loss))
