@@ -2,17 +2,12 @@ import tensorflow as tf
 import tensorflow.contrib.layers as layers
 import tensorflow.contrib.slim as slim
 import numpy as np
-import re
 from util import log
 from tensorflow_extentions import grouped_convolution
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import array_ops
-
-# If a model is trained with multiple GPUs, prefix all Op names with tower_name
-# to differentiate the operations. Note that this prefix is removed from the
-# names of the summaries when visualizing a model.
+import re
 TOWER_NAME = 'tower'
-
 
 
 TF_VERSION = float('.'.join(tf.__version__.split('.')[:2]))
@@ -132,7 +127,7 @@ def composite_function(_input, out_features, is_training,keep_prob,kernel_size=3
     """
     with tf.variable_scope("composite_function"):
         # BN
-        output = batch_norm(_input,is_training)
+        output = batch_norm(_input,is_training=False)
         # ReLU
         output = tf.nn.relu(output)
         # convolution
@@ -194,7 +189,9 @@ def transition_layer(_input,is_training,keep_prob,reduction):
     output = composite_function(
         _input, out_features=out_features, is_training=is_training, keep_prob=keep_prob, kernel_size=1)
     # run average pooling
-    output = avg_pool(output, k=2)
+    if min(int(output.get_shape()[1]),int(output.get_shape()[2]),int(output.get_shape()[3]))>1:
+        output = avg_pool(output, k=2)
+
     _activation_summary(output)
     return output
 
@@ -298,7 +295,7 @@ def _variable_on_cpu(name, shape, initializer):
     Variable Tensor
   """
   with tf.device('/cpu:0'):
-    dtype = tf.float16
+    dtype = tf.float32
     var = tf.get_variable(name, shape, initializer=initializer, dtype=dtype)
   return var
 
@@ -319,7 +316,7 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
   Returns:
     Variable Tensor
   """
-  dtype = tf.float16
+  dtype = tf.float32
   var = _variable_on_cpu(
       name,
       shape,

@@ -28,6 +28,8 @@ from sklearn.metrics import precision_score
 from sklearn.metrics import f1_score
 from sklearn.metrics import roc_curve
 import matplotlib.pyplot as plt
+from model import Model
+from datetime import datetime
 from sklearn.metrics import roc_auc_score
 
 
@@ -45,8 +47,9 @@ train_params_MRI = {
     'normalization': 'by_chanels',  # None, divide_256, divide_255, by_chanels
 }
 
-
-
+NUM_EPOCHS_PER_DECAY = 350.0
+LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
+MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
 
 class EvalManager(object):
 
@@ -192,11 +195,11 @@ class EvalManager(object):
 
 class Trainer(object):
 
-    def __init__(self,config, model):
+    def __init__(self,config):
         self.all_results_file_name = []
-        self.step_op = tf.no_op(name='step_no_op')
+
         self.config = config
-        self.model = model
+
 
         self.nesterov_momentum = config.nesterov_momentum
         self.weight_decay = config.weight_decay
@@ -207,7 +210,6 @@ class Trainer(object):
 
         # --- optimizer ---
 
-        tf.set_random_seed(1234)
 
         # --- checkpoint and monitoring ---
         all_var = tf.trainable_variables()
@@ -225,48 +227,13 @@ class Trainer(object):
         print([v.name for v in rem_var])
         assert not rem_var
 
-        l2_loss = tf.add_n(
-            [tf.nn.l2_loss(var) for var in tf.trainable_variables()])
+        # self.ckpt_path = config.checkpoint
+        # if self.ckpt_path is not None:
+        #     log.info("Checkpoint path: %s", self.ckpt_path)
+        #     self.saver.restore(self.session, self.ckpt_path)
+        #     log.info("Loaded the pretrain parameters from the provided checkpoint path")
 
-        # self.d_optimizer = tf.contrib.layers.optimize_loss(
-        #     loss=self.model.d_loss,
-        #     global_step=self.global_step,
-        #     learning_rate=self.config.learning_rate_d,
-        #     optimizer=tf.train.AdamOptimizer(beta1=0.5),
-        #     clip_gradients=20.0,
-        #     name='d_optimize_loss',
-        #     variables=d_var
-        # )
-
-        self.d_optimizer = tf.train.MomentumOptimizer(
-            self.config.learning_rate_d, self.nesterov_momentum, use_nesterov=True)
-        self.train_step = self.d_optimizer.minimize(
-            self.model.cross_entropy + l2_loss * self.weight_decay)
-
-        # self.g_optimizer = tf.contrib.layers.optimize_loss(
-        #     loss=self.model.g_loss,
-        #     global_step=self.global_step,
-        #     learning_rate=self.config.learning_rate_g,
-        #     optimizer=tf.train.AdamOptimizer(beta1=0.5),
-        #     clip_gradients=20.0,
-        #     name='g_optimize_loss',
-        #     variables=g_var
-        # )
-
-        self.summary_op = tf.summary.merge_all()
-
-        self.saver = tf.train.Saver(max_to_keep=30000)
-
-
-
-
-        self.ckpt_path = config.checkpoint
-        if self.ckpt_path is not None:
-            log.info("Checkpoint path: %s", self.ckpt_path)
-            self.saver.restore(self.session, self.ckpt_path)
-            log.info("Loaded the pretrain parameters from the provided checkpoint path")
-
-    def tower_loss(scope, images, labels):
+    def tower_loss(self, scope, images, labels):
         """Calculate the total loss on a single tower running the CIFAR model.
 
           Args:
@@ -279,20 +246,93 @@ class Trainer(object):
           """
 
         # Build inference Graph.
-        self.model.cross_entropy
+        # --- create model ---
+        with tf.device('/cpu:0'):
+            is_train=True
+            model = Model(self.config, self.config.growth_rate, self.config.depth,
+                          self.config.total_blocks, self.config.keep_prob,
+                          self.config.nesterov_momentum, self.config.model_type, scope, debug_information=self.config.debug,
+                          is_train=is_train,
+                          reduction=self.config.reduction,
+                          bc_mode=self.config.bc_mode)
 
 
 
+            loss, accuracy_each_batch, accuracy_all_batch, prediction_all, labels_all= model.build(images,labels, self.config.weight_decay,is_train=True)
 
-    def train_one_epoch_denseNet(self, data, batch_size, learning_rate):
+        return loss, accuracy_each_batch, accuracy_all_batch, prediction_all, labels_all
+
+    def average_gradients(self,tower_grads):
+        """Calculate the average gradient for each shared variable across all towers.
+
+        Note that this function provides a synchronization point across all towers.
+
+        Args:
+          tower_grads: List of lists of (gradient, variable) tuples. The outer list
+            is over individual gradients. The inner list is over the gradient
+            calculation for each tower.
+        Returns:
+           List of pairs of (gradient, variable) where the gradient has been averaged
+           across all towers.
+        """
+        average_grads = []
+        for grad_and_vars in zip(*tower_grads):
+            # Note that each grad_and_vars looks like the following:
+            #   ((grad0_gpu0, var0_gpu0), ... , (grad0_gpuN, var0_gpuN))
+            grads = []
+            for g, _ in grad_and_vars:
+                # Add 0 dimension to the gradients to represent the tower.
+                expanded_g = tf.expand_dims(g, 0)
+
+                # Append on a 'tower' dimension which we will average over below.
+                grads.append(expanded_g)
+
+            # Average over the 'tower' dimension.
+            grad = tf.concat(axis=0, values=grads)
+            grad = tf.reduce_mean(grad, 0)
+
+            # Keep in mind that the Variables are redundant because they are shared
+            # across towers. So .. we will just return the first tower's pointer to
+            # the Variable.
+            v = grad_and_vars[0][1]
+            grad_and_var = (grad, v)
+            average_grads.append(grad_and_var)
+        return average_grads
+
+    def train_all_epoch_denseNet(self, data, batch_size, learning_rate):
         _start_time = time.time()
         num_gpus = 2
         with tf.Graph().as_default(), tf.device('/cpu:0'):
+            # Create a variable to count the number of train() calls. This equals the
+            # number of batches processed * FLAGS.num_gpus.
+            total_start_time = time.time()
+            global_step = tf.get_variable(
+                'global_step', [],
+                initializer=tf.constant_initializer(0), trainable=False)
+
+            # Calculate the learning rate schedule.
+            num_batches_per_epoch = (len(data.ids) /batch_size/ num_gpus)
+            decay_steps = int(num_batches_per_epoch * NUM_EPOCHS_PER_DECAY)
+
+            # Decay the learning rate exponentially based on the number of steps.
+            lr = tf.train.exponential_decay(self.config.learning_rate_d,
+                                            global_step,
+                                            decay_steps,
+                                            LEARNING_RATE_DECAY_FACTOR,
+                                            staircase=True)
+            d_optimizer = tf.train.MomentumOptimizer(
+                lr, self.nesterov_momentum, use_nesterov=True)
+
             _, batch_train = create_input_ops(
                 data, batch_size)
             images, labels = batch_train['image'], batch_train['label']
+
             batch_queue = tf.contrib.slim.prefetch_queue.prefetch_queue(
                 [images, labels], capacity=2 * num_gpus)
+
+            # Calculate the gradients for each model tower.
+            tower_grads = []
+
             with tf.variable_scope(tf.get_variable_scope()):
                 for i in xrange(num_gpus):
                     with tf.device('/gpu:%d' % i):
@@ -302,79 +342,116 @@ class Trainer(object):
                             # Calculate the loss for one tower of the CIFAR model. This function
                             # constructs the entire CIFAR model but shares the variables across
                             # all towers.
-                            loss = self.tower_loss(scope, image_batch, label_batch)
+                            loss, accuracy_each_batch, accuracy_all_batch, prediction_all, labels_all = self.tower_loss(scope, image_batch, label_batch)
                             # Reuse variables for the next tower.
                             tf.get_variable_scope().reuse_variables()
-        num_examples = data.num_examples
-        total_loss = []
-        total_accuracy = []
-        data._batch_counter = 0
 
-        iteration_time=num_examples // batch_size
-        for i in range(iteration_time):
-            batch =
-            images, labels = data.all_images_labels()
-            feed_dict = {
-                self.model.images: images,
-                self.model.labels: labels,
-                self.model.learning_rate: learning_rate,
-                self.model.is_training_denseNet: True,
-            }
-            fetches = [self.train_step, self.model.cross_entropy, self.model.accuracy,self.summary_op]
-            result = self.session.run(fetches, feed_dict=feed_dict)
-            _, loss, accuracy,summary = result
-            total_loss.append(loss)
-            total_accuracy.append(accuracy)
-            # total_summary.append(summary)
-            self.batches_step += 1
-            self.log_loss_accuracy(
-                    loss, accuracy, self.batches_step, prefix='per_batch',
-                    should_print=True)
-        mean_loss = np.mean(total_loss)
-        mean_accuracy = np.mean(total_accuracy)
-        _end_time = time.time()
-        return mean_loss, mean_accuracy,(_end_time - _start_time)/int(num_examples // batch_size),summary
+                            # Retain the summaries from the final tower.
+                            summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
 
-    # def train_one_epoch(self, batch, is_train=True):
-    #     _start_time = time.time()
-    #
-    #
-    #
-    #     batch_chunk = self.session.run(batch)
-    #
-    #     fetch = [self.global_step, self.train_step,
-    #              self.model.cross_entropy, self.model.accuracy,self.summary_op]
-    #     #
-    #     # if self.model.accuracy < 0.8:
-    #     #     fetch.append(self.d_optimizer)
-    #     # else:
-    #     #     fetch.append(self.g_optimizer)
-    #
-    #     # if step % (self.config.update_rate+1) > 0:
-    #     # Train the generator
-    #     # fetch.append(self.d_optimizer)
-    #     # else:
-    #     # Train the discriminator
-    #     #     fetch.append(self.g_optimizer)
-    #     fetch.append(self.train_step)
-    #
-    #
-    #     fetch_values = self.session.run(fetch,
-    #         feed_dict=self.model.get_feed_dict(batch_chunk)
-    #     )
-    #
-    #     [step, _ ,loss, accuracy, summary] = fetch_values[:5]
-    #
-    #
-    #     _end_time = time.time()
-    #
-    #
-    #
-    #     return step, _ , loss,accuracy, summary,\
-    #         (_end_time - _start_time)
+                            # Calculate the gradients for the batch of data on this CIFAR tower.
+                            grads = d_optimizer.compute_gradients(loss)
+                            print("qqqqqqqqqqqqqq")
+                            print(grads)
+                            # Keep track of the gradients across all towers.
+                            tower_grads.append(grads)
 
+            # We must calculate the mean of each gradient. Note that this is the
+            # synchronization point across all towers.
+            print("ZZZZZZZZZZZZZZZZZZZZZZ")
+            print(tower_grads[0])
+            grads = self.average_gradients(tower_grads)
+            print(grads)
+
+            # Add a summary to track the learning rate.
+            summaries.append(tf.summary.scalar('learning_rate', lr))
+
+            # Add histograms for gradients.
+            for grad, var in grads:
+                if grad is not None:
+                    summaries.append(tf.summary.histogram(var.op.name + '/gradients', grad))
+
+            # Apply the gradients to adjust the shared variables.
+            apply_gradient_op = d_optimizer.apply_gradients(grads, global_step=global_step)
+
+            # Add histograms for trainable variables.
+            for var in tf.trainable_variables():
+                summaries.append(tf.summary.histogram(var.op.name, var))
+
+            # Track the moving averages of all trainable variables.
+            variable_averages = tf.train.ExponentialMovingAverage(
+                 MOVING_AVERAGE_DECAY, global_step)
+            variables_averages_op = variable_averages.apply(tf.trainable_variables())
+
+            # Group all updates to into a single train op.
+            train_op = tf.group(apply_gradient_op, variables_averages_op)
+
+            # Create a saver.
+            saver = tf.train.Saver(tf.global_variables())
+
+            # Build the summary operation from the last tower summaries.
+            summary_op = tf.summary.merge(summaries)
+
+            # Build an initialization operation to run below.
+            init = tf.global_variables_initializer()
+
+            # Start running operations on the Graph. allow_soft_placement must be set to
+            # True to build towers on GPU, as some of the ops do not have GPU
+            # implementations.
+            self.sess = tf.Session(config=tf.ConfigProto(
+                allow_soft_placement=True,
+                log_device_placement=False))
+            self.sess.run(init)
+
+            # Start the queue runners.
+            tf.train.start_queue_runners(sess=self.sess)
+
+            summary_writer = tf.summary.FileWriter(self.train_dir, self.sess.graph)
+
+            print("XXXXXXXXXXXXXXXXXXXXXX")
+
+            print("self.config.max_training_steps:%s",self.config.max_training_steps)
 
 
+            for epoch in xrange(self.config.max_training_steps):
+                start_time = time.time()
+
+                print("self.epoch:%s", epoch)
+                print("XXXXXX~~~~~~~~~~~~~~~~~~~XXXXXXXXX")
+                print(grads)
+                print(loss)
+
+                _, loss_value = self.sess.run([train_op, loss])
+                duration = time.time() - start_time
+
+                assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
+
+                if epoch % 10 == 0:
+                    num_examples_per_epoch = batch_size * num_gpus
+                    examples_per_sec = num_examples_per_epoch / duration
+                    sec_per_batch = duration / num_gpus
+
+                    format_str = ('%s: epoch %d, loss = %.2f (%.1f examples/sec; %.3f '
+                                  'sec/batch)')
+                    log.info(format_str % (datetime.now(), epoch, loss_value,
+                                        examples_per_sec, sec_per_batch))
+
+                if epoch % 100 == 0:
+                    summary_str = self.sess.run(summary_op)
+                    summary_writer.add_summary(summary_str, epoch)
+
+
+                # Save the model checkpoint periodically.
+                if epoch % 50 == 0 or (epoch + 1) == self.config.max_training_steps:
+                    log.infov("Saved checkpoint at %d", epoch)
+                    checkpoint_path = os.path.join(self.train_dir, 'model')
+                    saver.save(self.sess, checkpoint_path, global_step=epoch)
+
+            log.infov("Training ends!")
+            _end_time = time.time()
+
+            total_time = _end_time - total_start_time
+            log.infov("total training runtime for one fold all epoches: %s ", total_time)
 
 
 
@@ -393,10 +470,7 @@ class Trainer(object):
 
 
 
-    def train_one_fold_all_epoches(self,dataset_train,train_params, whichFoldData):
-        # self.global_step = tf.contrib.framework.get_or_create_global_step(graph=None)
-
-
+    def train_one_fold_all_epoches(self,dataset_train, whichFoldData):
 
 
         temp = self.config.hdf5FileName.split('.')
@@ -421,30 +495,13 @@ class Trainer(object):
         )
 
         # time.strftime("%Y%m%d-%H%M%S")
+        if tf.gfile.Exists(self.train_dir):
+            tf.gfile.DeleteRecursively(self.train_dir)
 
         os.makedirs(self.train_dir)
         log.infov("Train Dir: %s", self.train_dir)
-        self.summary_writer = tf.summary.FileWriter(self.train_dir)
 
-        self.supervisor = tf.train.Supervisor(
-            logdir=self.train_dir,
-            is_chief=True,
-            saver=None,
-            summary_op=None,
-            summary_writer=self.summary_writer,
-            save_summaries_secs=300,
-            save_model_secs=600,
-            global_step=self.global_step,
-        )
 
-        session_config = tf.ConfigProto(
-            allow_soft_placement=True,
-            gpu_options=tf.GPUOptions(allow_growth=True),
-            device_count={'GPU': 2},
-        )
-
-        session_config.gpu_options.allocator_type='BFC'
-        self.session = self.supervisor.prepare_or_wait_for_session(config=session_config)
 
         self.checkpoint = self.config.checkpoint
         if self.checkpoint is None and self.train_dir:
@@ -470,52 +527,12 @@ class Trainer(object):
         log.infov("Training Starts!")
         pprint(dataset_train)
         batch_size = self.config.batch_size
-        reduce_lr_epoch_1 = train_params['reduce_lr_epoch_1']
-        reduce_lr_epoch_2 = train_params['reduce_lr_epoch_2']
-        total_start_time = time.time()
 
 
-        # pprint(self.batch_train)
-        # step = self.session.run(self.global_step)
 
-        for epoch in xrange(self.config.max_training_steps):
-            self.batches_step = 0
-
-            # periodic inference
-            start_time = time.time()
-            print("\n", '-' * 30, "Train epoch: %d" % epoch, '-' * 30, '\n')
-
-            if epoch == reduce_lr_epoch_1 or epoch == reduce_lr_epoch_2:
-                self.config.learning_rate_d = self.config.learning_rate_d / 10
-                print("Decrease learning rate, new lr = %f" % self.config.learning_rate_d)
-
-            print("Training...")
-
-            mean_loss, mean_accuracy,step_time,total_summary = \
-                self.train_one_epoch_denseNet(dataset_train, batch_size, self.config.learning_rate_d)
-
-            self.log_step_message(epoch, mean_accuracy, mean_loss,
-                                       step_time, is_train=False)
-            # self.log_loss_accuracy(mean_loss, mean_accuracy, epoch, prefix='train')
-
-            # time_per_epoch = time.time() - start_time
-            # seconds_left = int((self.config.max_training_steps - epoch) * time_per_epoch)
-            # print("Time per epoch: %s, Est. complete in: %s" % (
-            #     str(timedelta(seconds=time_per_epoch)),
-            #     str(timedelta(seconds=seconds_left))))
+        self.train_all_epoch_denseNet(dataset_train, batch_size, self.config.learning_rate_d)
 
 
-            if epoch % self.config.write_summary_step == 0:
-                self.summary_writer.add_summary(total_summary, global_step=step)
-              # this checkpoint seems something wrong
-            if epoch % self.config.output_save_step == 0:
-                log.infov("Saved checkpoint at %d", epoch)
-                save_path = self.saver.save(self.session, os.path.join(self.train_dir, 'model'), global_step=step)
-
-        log.infov("Training ends!")
-        _end_time = time.time()
-        total_time = _end_time - total_start_time
-        log.infov("total training runtime for one fold all epoches: %s ", total_time)
 
 
 
@@ -609,11 +626,11 @@ class Trainer(object):
 
 
     def eval_run(self,result_file_name,all_result_file_name, dataset_test, whichFoldData):
-        self.dataset = dataset_test[whichFoldData]
+        dataset = dataset_test[whichFoldData]
 
 
         if self.checkpoint:
-            self.saver.restore(self.session, self.checkpoint)
+            self.saver.restore(self.sess, self.checkpoint)
             log.info("Loaded from checkpoint!")
 
         log.infov("Start 1-epoch Inference and Evaluation")
@@ -621,44 +638,39 @@ class Trainer(object):
         log.info("# of examples = %d", len(self.dataset))
         length_dataset = len(self.dataset)
 
+        _start_time = time.time()
+        num_gpus = 2
+        with tf.Graph().as_default(), tf.device('/cpu:0'):
 
-        # max_steps = int(length_dataset / self.batch_size) + 1
-        # log.info("max_steps = %d", max_steps)
+            _, batch_test = create_input_ops(
+                dataset, self.batch_size)
+            images, labels = batch_test['image'], batch_test['label']
+            batch_queue = tf.contrib.slim.prefetch_queue.prefetch_queue(
+                [images, labels], capacity=2 * num_gpus)
 
-        evaler = EvalManager()
+            with tf.variable_scope(tf.get_variable_scope()):
+                for i in xrange(num_gpus):
+                    with tf.device('/gpu:%d' % i):
+                        with tf.name_scope('MRI_gpu_test_%d' % (i)) as scope:
+                            # Dequeues one batch for the GPU
+                            image_batch, label_batch = batch_queue.dequeue()
+                            # Calculate the loss for one tower of the CIFAR model. This function
+                            # constructs the entire CIFAR model but shares the variables across
+                            # all towers.
+                            loss, accuracy_each_batch, accuracy_all_batch, prediction_all, labels_all = self.tower_loss(scope,
+                                                                                                      image_batch,
+                                                                                                      label_batch)
+                            # Reuse variables for the next tower.
+                            tf.get_variable_scope().reuse_variables()
 
-        num_examples = self.dataset.num_examples
-        total_loss = []
-        total_accuracy = []
-        max_steps = num_examples // self.batch_size
-        self.dataset._batch_counter = 0
-        for i in range(max_steps):
-            batch = self.dataset.next_batch(self.batch_size)
-            feed_dict = {
-                self.model.images: batch[0],
-                self.model.labels: batch[1],
-                self.model.is_training_denseNet: False,
-            }
-            fetches = [self.model.accuracy, self.model.all_preds, self.model.all_targets, self.model.cross_entropy]
-            accuracy, prediction_pred, prediction_gt, loss = self.session.run(fetches, feed_dict=feed_dict)
-            evaler.add_batch_new(prediction_pred, prediction_gt)
-
-
-        total_loss.append(loss)
-        total_accuracy.append(accuracy)
-        evaler.report(result_file_name,all_result_file_name, whichFoldData)
-
-        mean_loss = np.mean(total_loss)
-        mean_accuracy = np.mean(total_accuracy)
+            evaler = EvalManager()
 
 
-        log.infov("Fold------"+ str(whichFoldData))
-        log.infov("mean accuracy------" + str(mean_accuracy))
-        log.infov("Fold------" + str(whichFoldData))
+            evaler.add_batch_new(prediction_all, labels_all)
 
 
-        log.infov("Evaluation complete.")
-        return mean_loss, mean_accuracy
+            evaler.report(result_file_name,all_result_file_name, whichFoldData)
+
 
     def run_single_step(self, batch, step=None, is_train=True):
         _start_time = time.time()
@@ -688,26 +700,7 @@ class Trainer(object):
                          )
                )
 
-    # def log_step_message(self, step, accuracy, d_loss, g_loss,
-    #                      s_loss, step_time, is_train=True):
-    #     if step_time == 0: step_time = 0.001
-    #     log_fn = (is_train and log.info or log.infov)
-    #     log_fn((" [{split_mode:5s} step {step:4d}] " +
-    #             "Supervised loss: {s_loss:.5f} " +
-    #             "D loss: {d_loss:.5f} " +
-    #             "G loss: {g_loss:.5f} " +
-    #             "Accuracy: {accuracy:.5f} "
-    #             "({sec_per_batch:.3f} sec/batch, {instance_per_sec:.3f} instances/sec) "
-    #             ).format(split_mode=(is_train and 'train' or 'val'),
-    #                      step = step,
-    #                      d_loss = d_loss,
-    #                      g_loss = g_loss,
-    #                      s_loss = s_loss,
-    #                      accuracy = accuracy,
-    #                      sec_per_batch = step_time,
-    #                      instance_per_sec = self.batch_size / step_time
-    #                      )
-    #            )
+
 
 
 def find_TP(y_true, y_pred):
@@ -798,11 +791,11 @@ def main():
 
 
 
-    print("    FoldData" + str(whichFoldData))
+    print("xxxx    FoldData" + str(whichFoldData))
 
-    config, model, dataset_train, dataset_test = argparser(is_train=True)
+    config= argparser(is_train=True)
 
-    trainer = Trainer(config, model)
+    trainer = Trainer(config)
 
     log.warning("dataset: %s, learning_rate_g: %f, learning_rate_d: %f",
                 config.hdf5FileName, config.learning_rate_g, config.learning_rate_d)
@@ -810,12 +803,12 @@ def main():
 
 
 
-    while whichFoldData < 10:
+    while whichFoldData < 1:
 
 
         if config.train:
             print("Data provider train images: ", len(dataset_train[whichFoldData]))
-            trainer.train_one_fold_all_epoches(dataset_train[whichFoldData], train_params_MRI, whichFoldData)
+            trainer.train_one_fold_all_epoches(dataset_train[whichFoldData], whichFoldData)
         if config.test:
             print("Data provider test images: ", len(dataset_test[whichFoldData]))
             print("Testing...")

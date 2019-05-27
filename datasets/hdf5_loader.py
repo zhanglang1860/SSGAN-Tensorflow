@@ -8,6 +8,7 @@ import h5py
 from util import log
 from sklearn.model_selection import KFold
 import random
+import tensorflow as tf
 
 
 def augment_image(image, pad):
@@ -39,122 +40,116 @@ def augment_all_images(initial_images, pad):
     return new_images
 
 
-class Dataset(object):
-
-    def __init__(self, path, ids, name='default',
-                 max_examples=None, is_train=True,hdf5FileName=None):
-        self._ids = list(ids)
-        self.name = name
-        self.is_train = is_train
-
-        if max_examples is not None:
-            self._ids = self._ids[:max_examples]
-
-        filename = hdf5FileName
 
 
-        file = os.path.join(path, filename)
-        log.info("Reading %s ...", file)
+def __init__(self, path, ids, name='default',
+             max_examples=None, is_train=True,hdf5FileName=None):
+    self._ids = list(ids)
+    self.name = name
+    self.is_train = is_train
 
-        self.data = h5py.File(file, 'r')
-        log.info("Reading Done: %s", file)
-        self._batch_counter = 0
+    if max_examples is not None:
+        self._ids = self._ids[:max_examples]
+
+    filename = hdf5FileName
 
 
+    file = os.path.join(path, filename)
+    log.info("Reading %s ...", file)
 
-    def get_data(self, id):
-        # preprocessing and data augmentation
-        img = self.data[id]['image'].value / 255.
-        l = self.data[id]['label'].value.astype(np.float32)
-        return img, l
+    self.data = h5py.File(file, 'r')
+    log.info("Reading Done: %s", file)
+    self._batch_counter = 0
 
 
 
+def get_data(id, all_hdf5_data):
+    # preprocessing and data augmentation
+    # id= int(id)
+    images = all_hdf5_data[id]['image'].value / 255.
+    l = all_hdf5_data[id]['label'].value.astype(np.float32)
 
+    images =np.reshape(images, (images.shape[0], images.shape[1],images.shape[2],1))
 
-    # def start_new_epoch(self):
-    #     self._batch_counter = 0
-    #     # if self.shuffle_every_epoch:
-    #     #     images, labels = self.shuffle_images_and_labels(
-    #     #         self.images, self.labels)
-    #     # else:
-    #     images, labels = self.images, self.labels
-    #     # if self.augmentation:
-    #     #     images = augment_all_images(images, pad=4)
-    #     self.epoch_images = images
-    #     self.epoch_labels = labels
-
-
-    def all_images_labels(self):
-        id_slice = self._ids
-        images_slice = []
-        labels_slice = []
-
-        for each_id in id_slice:
-            each_images_slice,each_labels_slice= self.get_data(each_id)
-            shape_list=each_images_slice.shape
-            each_images_slice=np.reshape(each_images_slice, (shape_list[0],shape_list[1],shape_list[2],1))
-            images_slice.append(each_images_slice)
-            labels_slice.append(each_labels_slice)
-
-        labels_slice = np.array(labels_slice, dtype=np.float32)
-        images_slice = np.array(images_slice, dtype=np.float32)
-        # if images_slice.shape[0] != batch_size:
-        #     self.start_new_epoch()
-        #     return self.next_batch(batch_size)
-        # else:
-        return images_slice, labels_slice
+    return images, l
 
 
 
 
 
-    def next_batch(self, batch_size):
-        start = self._batch_counter * batch_size
-        end = min((self._batch_counter + 1) * batch_size,len(self.ids))
-        self._batch_counter += 1
-        id_slice = self._ids[start: end]
-        images_slice = []
-        labels_slice = []
-
-        for each_id in id_slice:
-            each_images_slice,each_labels_slice= self.get_data(each_id)
-            shape_list=each_images_slice.shape
-            each_images_slice=np.reshape(each_images_slice, (shape_list[0],shape_list[1],shape_list[2],1))
-            images_slice.append(each_images_slice)
-            labels_slice.append(each_labels_slice)
-
-        labels_slice = np.array(labels_slice, dtype=np.float32)
-        images_slice = np.array(images_slice, dtype=np.float32)
-        # if images_slice.shape[0] != batch_size:
-        #     self.start_new_epoch()
-        #     return self.next_batch(batch_size)
-        # else:
-        return images_slice, labels_slice
-
-    @property
-    def num_examples(self):
-        return len(self.ids)
+# def start_new_epoch(self):
+#     self._batch_counter = 0
+#     # if self.shuffle_every_epoch:
+#     #     images, labels = self.shuffle_images_and_labels(
+#     #         self.images, self.labels)
+#     # else:
+#     images, labels = self.images, self.labels
+#     # if self.augmentation:
+#     #     images = augment_all_images(images, pad=4)
+#     self.epoch_images = images
+#     self.epoch_labels = labels
 
 
+def all_images_labels(self):
+    id_slice = self._ids
+    images_slice = []
+    labels_slice = []
 
-    @property
-    def ids(self):
-        return self._ids
+    for each_id in id_slice:
+        each_images_slice,each_labels_slice= self.get_data(each_id)
+        shape_list=each_images_slice.shape
+        each_images_slice=np.reshape(each_images_slice, (shape_list[0],shape_list[1],shape_list[2],1))
+        images_slice.append(each_images_slice)
+        labels_slice.append(each_labels_slice)
 
-    def __len__(self):
-        return len(self.ids)
+    labels_slice = np.array(labels_slice, dtype=np.float32)
+    images_slice = np.array(images_slice, dtype=np.float32)
+    # if images_slice.shape[0] != batch_size:
+    #     self.start_new_epoch()
+    #     return self.next_batch(batch_size)
+    # else:
+    return images_slice, labels_slice
 
-    def __repr__(self):
-        return 'Dataset (%s, %d examples)' % (
-            self.name,
-            len(self)
-        )
+
+
+
+
+def next_batch(self, batch_size):
+    start = self._batch_counter * batch_size
+    end = min((self._batch_counter + 1) * batch_size,len(self.ids))
+    self._batch_counter += 1
+    id_slice = self._ids[start: end]
+    images_slice = []
+    labels_slice = []
+
+    for each_id in id_slice:
+        each_images_slice,each_labels_slice= self.get_data(each_id)
+        shape_list=each_images_slice.shape
+        each_images_slice=np.reshape(each_images_slice, (shape_list[0],shape_list[1],shape_list[2],1))
+        images_slice.append(each_images_slice)
+        labels_slice.append(each_labels_slice)
+
+    labels_slice = np.array(labels_slice, dtype=np.float32)
+    images_slice = np.array(images_slice, dtype=np.float32)
+    # if images_slice.shape[0] != batch_size:
+    #     self.start_new_epoch()
+    #     return self.next_batch(batch_size)
+    # else:
+    return images_slice, labels_slice
 
 
 def create_default_splits(path, hdf5FileName,idFileName,cross_validation_number):
+    filename = hdf5FileName
+
+    file = os.path.join(path, filename)
+    log.info("Reading %s ...", file)
+
+    all_hdf5_data = h5py.File(file, 'r')
+    log.info("Reading Done: %s", file)
+
+
     dataset_train, dataset_test = all_ids(path,hdf5FileName,idFileName,cross_validation_number)
-    return dataset_train, dataset_test
+    return dataset_train, dataset_test, all_hdf5_data
 
 
 
@@ -198,8 +193,8 @@ def all_ids(path,hdf5FileName,idFileName,cross_validation_number):
 
 
 
-        dataset_train[i] = Dataset(path, train_ids[i], name='train', is_train=False, hdf5FileName=hdf5FileName)
-        dataset_test[i] = Dataset(path, test_ids[i], name='test', is_train=False, hdf5FileName=hdf5FileName)
+        dataset_train[i] = list(train_ids[i])
+        dataset_test[i] = list(test_ids[i])
         i=i+1
 
     return dataset_train, dataset_test
