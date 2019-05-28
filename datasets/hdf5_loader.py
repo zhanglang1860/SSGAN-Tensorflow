@@ -148,12 +148,12 @@ def create_default_splits(path, hdf5FileName,idFileName,cross_validation_number)
     log.info("Reading Done: %s", file)
 
 
-    dataset_train, dataset_test = all_ids(path,hdf5FileName,idFileName,cross_validation_number)
+    dataset_train, dataset_test = all_ids(path,idFileName,cross_validation_number)
     return dataset_train, dataset_test, all_hdf5_data
 
 
 
-def all_ids(path,hdf5FileName,idFileName,cross_validation_number):
+def all_ids(path,idFileName,cross_validation_number):
     id_filename = idFileName
     id_txt = os.path.join(path, id_filename)
     with open(id_txt, 'r') as fp:

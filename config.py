@@ -16,7 +16,7 @@ def argparser(is_train=True):
     parser.add_argument('--debug', action='store_true', default=False)
     parser.add_argument('--prefix', type=str, default='default')
     parser.add_argument('--train_dir', type=str)
-    parser.add_argument('--eval_dir', type=str, default='/data2/3dDenseNetEvaluate')
+    parser.add_argument('--eval_dir', type=str, default='./data2/3dDenseNetEvaluate')
 
     parser.add_argument('--checkpoint', type=str, default=None)
     parser.add_argument('--hdf5FileName', type=str, default='MRIdata_3_AD_MCI_Normal_teset.hdf5',
@@ -37,13 +37,13 @@ def argparser(is_train=True):
     parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--ckpt_save_step', type=int, default=50)
     parser.add_argument('--test_sample_step', type=int, default=100)
-    parser.add_argument('--output_save_step', type=int, default=10)
+    parser.add_argument('--output_save_step', type=int, default=50)
     # learning
     parser.add_argument('--max_sample', type=int, default=5000,
                         help='num of samples the model can see')
     parser.add_argument('--max_training_steps', type=int, default=6000)
     parser.add_argument('--learning_rate_g', type=float, default=0.0025)
-    parser.add_argument('--learning_rate_d', type=float, default=0.1)
+    parser.add_argument('--learning_rate_d', type=float, default=0.01)
     parser.add_argument('--update_rate', type=int, default=6)
     parser.add_argument('--num_gpus', type=int, default=2)
     # }}}

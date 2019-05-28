@@ -128,7 +128,7 @@ class EvalManager(object):
         z = zip(self._predictions, self._groundtruths)
         u = list(z)
 
-        with open('/home/wenyu/Documents/GANresults/' + result_file_name + '.csv', mode='w') as file:
+        with open('./data2/GANresults/' + result_file_name + '.csv', mode='w') as file:
             writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             writer.writerow(['actual_label', 'model_GAN'])
             for pred, gt in u:
@@ -144,31 +144,31 @@ class EvalManager(object):
 
 
 
-        with open('/home/wenyu/Documents/GANresults/' + all_result_file_name + '.csv', mode='w') as file:
-            writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            if whichFoldData == 0:
-                writer.writerow(['actual_label', 'model_GAN'])
-                for pred, gt in u:
-                    gt_csv = np.argmax(gt)
-                    pred_csv = pred[np.argmax(gt)]
-
-                    one_row = []
-
-                    one_row.append(str(gt_csv))
-                    one_row.append(str(pred_csv))
-
-                    writer.writerow(one_row)
-            else:
-                for pred, gt in u:
-                    gt_csv = np.argmax(gt)
-                    pred_csv = pred[np.argmax(gt)]
-
-                    one_row = []
-
-                    one_row.append(str(gt_csv))
-                    one_row.append(str(pred_csv))
-
-                    writer.writerow(one_row)
+        # with open('./data2/GANresults/' + all_result_file_name + '.csv', mode='w') as file:
+        #     writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        #     if whichFoldData == 0:
+        #         writer.writerow(['actual_label', 'model_GAN'])
+        #         for pred, gt in u:
+        #             gt_csv = np.argmax(gt)
+        #             pred_csv = pred[np.argmax(gt)]
+        #
+        #             one_row = []
+        #
+        #             one_row.append(str(gt_csv))
+        #             one_row.append(str(pred_csv))
+        #
+        #             writer.writerow(one_row)
+        #     else:
+        #         for pred, gt in u:
+        #             gt_csv = np.argmax(gt)
+        #             pred_csv = pred[np.argmax(gt)]
+        #
+        #             one_row = []
+        #
+        #             one_row.append(str(gt_csv))
+        #             one_row.append(str(pred_csv))
+        #
+        #             writer.writerow(one_row)
 
 
 
@@ -227,32 +227,37 @@ def construct_train_dir(config):
     all_train_dir = []
 
     temp = config.hdf5FileName.split('.')
-    hyper_parameter_all_folds = 'allFolds_{}_lr_g_{}_d_{}_update_G{}D{}'.format(
+    hyper_parameter_all_folds = 'allFolds_{}_lr_g_{}_d_{}_update_G{}D{}_batchSize{}_maxIteration{}'.format(
         temp[0], config.learning_rate_g, config.learning_rate_d,
-        1, config.update_rate
+        1, config.update_rate, config.batch_size, config.max_training_steps
     )
 
-    config.prefix = 'depth{}_growthRate{}_reduce{}_batchSize{}'.format(
+    config.prefix = 'depth{}_growthRate{}_reduce{}_model_type{}'.format(
         config.depth, config.growth_rate, config.reduction,
-        config.batch_size
+        config.model_type
     )
 
     while whichFoldData<10:
-        hyper_parameter_str = 'fold_{}_{}_lr_g_{}_d_{}_update_G{}D{}'.format(
+        hyper_parameter_str = 'fold_{}_{}_lr_g_{}_d_{}_update_G{}D{}_batchSize{}_maxIteration{}'.format(
             str(whichFoldData), temp[0], config.learning_rate_g, config.learning_rate_d,
-            1, config.update_rate
+            1, config.update_rate, config.batch_size, config.max_training_steps
         )
 
-        train_dir = './train_dir/%s-%s' % (
+        train_dir = './data2/3dDenseNetTrainDir/train_dir/%s-%s' % (
             config.prefix,
             hyper_parameter_str
         )
 
         # time.strftime("%Y%m%d-%H%M%S")
-        if tf.gfile.Exists(train_dir):
-            tf.gfile.DeleteRecursively(train_dir)
+        # if tf.gfile.Exists(train_dir):
+        #     tf.gfile.DeleteRecursively(train_dir)
 
-        os.makedirs(train_dir)
+        if tf.gfile.Exists(train_dir):
+            print()
+        else:
+            os.makedirs(train_dir)
+
+
         log.infov("Train Dir: %s", train_dir)
         result_file_name = hyper_parameter_str + config.prefix + '-' + time.strftime("%Y%m%d-%H%M%S")
         whichFoldData=whichFoldData+1
@@ -283,7 +288,9 @@ def tower_loss(scope, images, labels,config):
   """
 
   # Build inference Graph.
-  logits = mri.inference(images,config)
+
+  logits = mri.inference(images, config)
+
 
   # Build the portion of the Graph calculating the losses. Note that we will
   # assemble the total_loss using a custom function below.
@@ -311,6 +318,8 @@ def tower_loss(scope, images, labels,config):
   #     tf.argmax(labels, 1))
   # accuracy_each_batch2 = tf.reduce_mean(tf.cast(correct_prediction_each_batch, tf.float32))
 
+  tf.summary.scalar("loss/train_accuracy", accuracy_each_batch)
+  tf.summary.scalar("loss/D_total_loss", total_loss)
 
 
 
@@ -365,7 +374,6 @@ def train(config,whichFoldData,all_train_dir):
         'global_step', [],
         initializer=tf.constant_initializer(0), trainable=False)
 
-
     images, labels, num_examples_per_epoch_for_train, dataset_test, all_hdf5_data = mri.distorted_inputs(config,whichFoldData)
 
     # Calculate the learning rate schedule.
@@ -374,7 +382,7 @@ def train(config,whichFoldData,all_train_dir):
     decay_steps = int(num_batches_per_epoch * mri.NUM_EPOCHS_PER_DECAY)
 
     # Decay the learning rate exponentially based on the number of steps.
-    lr = tf.train.exponential_decay(mri.INITIAL_LEARNING_RATE,
+    lr = tf.train.exponential_decay(config.learning_rate_d,
                                     global_step,
                                     decay_steps,
                                     mri.LEARNING_RATE_DECAY_FACTOR,
@@ -445,7 +453,7 @@ def train(config,whichFoldData,all_train_dir):
     train_op = tf.group(apply_gradient_op, variables_averages_op)
 
     # Create a saver.
-    saver = tf.train.Saver(tf.global_variables())
+    saver = tf.train.Saver(tf.global_variables(),max_to_keep=30000)
 
     # Build the summary operation from the last tower summaries.
     summary_op = tf.summary.merge(summaries)
@@ -494,7 +502,7 @@ def train(config,whichFoldData,all_train_dir):
 
     total_time = time.time() - total_start_time
     log.infov("total training runtime for one fold all epoches: %s ", total_time)
-    return dataset_test, all_hdf5_data,sess,saver
+    return dataset_test, all_hdf5_data
 
 
 """Run Eval once.
@@ -505,7 +513,7 @@ def train(config,whichFoldData,all_train_dir):
     top_k_op: Top K op.
     summary_op: Summary op.
   """
-def eval_once(saver, summary_writer, predicts,labels, summary_op,train_dir, config,num_test_example,result_file_name, all_result_file_name, whichFoldData):
+def eval_once(saver, summary_writer, predicts,labels, summary_op,train_dir, config,num_test_example,result_file_name, all_result_file_name, whichFoldData,loss):
 
     evaler = EvalManager()
     with tf.Session() as sess:
@@ -545,16 +553,22 @@ def eval_once(saver, summary_writer, predicts,labels, summary_op,train_dir, conf
         step=0
 
         while step < num_iter and not coord.should_stop():
-          prediction_value, ground_truth = sess.run([predicts, labels])
+          loss_test, prediction_value, ground_truth = sess.run([loss, predicts, labels])
+          tf.add_to_collection('test_losses', loss_test)
           true_count += np.sum(prediction_value)
           step += 1
           evaler.add_batch_new(prediction_value, ground_truth)
 
         # Compute precision @ 1.
         precision = true_count / total_sample_count
-        print('%s: precision @ 1 = %.3f' % (datetime.now(), precision))
+        # print('%s: precision @ 1 = %.3f' % (datetime.now(), precision))
 
         summary = tf.Summary()
+        total_test_losses = tf.get_collection('test_losses')
+
+        # Calculate the total loss for the current tower.
+        total_test_loss = tf.add_n(total_test_losses, name='total_loss')
+        tf.summary.scalar("loss/D_test_total_loss", total_test_loss)
         summary.ParseFromString(sess.run(summary_op))
         summary.value.add(tag='Precision @ 1', simple_value=precision)
         summary_writer.add_summary(summary, global_step)
@@ -568,7 +582,7 @@ def eval_once(saver, summary_writer, predicts,labels, summary_op,train_dir, conf
 
 
 
-def eval_run(result_file_name,all_result_file_name, dataset_test, whichFoldData, all_hdf5_data,config,sess,saver,train_dir):
+def eval_run(result_file_name,all_result_file_name, dataset_test, whichFoldData, all_hdf5_data,config,train_dir):
 
     log.infov("Start 1-epoch Inference and Evaluation")
 
@@ -581,6 +595,7 @@ def eval_run(result_file_name,all_result_file_name, dataset_test, whichFoldData,
         ids,images, labels = mri.distorted_inputs_test(all_hdf5_data,dataset_test,batch_size, whichFoldData)
         logits = mri.inference(images, config)
         predicts = tf.nn.softmax(logits)
+        loss, accuracy_each_batch1,prediction1,labels1= mri.loss(logits, labels, config)
 
         # Restore the moving average version of the learned variables for eval.
         variable_averages = tf.train.ExponentialMovingAverage(
@@ -591,7 +606,7 @@ def eval_run(result_file_name,all_result_file_name, dataset_test, whichFoldData,
         summary_op = tf.summary.merge_all()
 
         summary_writer = tf.summary.FileWriter(config.eval_dir, g)
-        eval_once(saver, summary_writer, predicts,labels, summary_op,train_dir,config,len(dataset_test),result_file_name, all_result_file_name, whichFoldData)
+        eval_once(saver, summary_writer, predicts,labels, summary_op,train_dir,config,len(dataset_test),result_file_name, all_result_file_name, whichFoldData,loss)
 
 
 
@@ -600,7 +615,7 @@ def eval_run(result_file_name,all_result_file_name, dataset_test, whichFoldData,
 
 
 def calculateConfusionMatrix(each_result_file_name):
-    df = pd.read_csv('/home/wenyu/Documents/GANresults/' + each_result_file_name + '.csv')
+    df = pd.read_csv('./data2/GANresults/' + each_result_file_name + '.csv')
     df.head()
     thresh = 0.5
     df['predicted_GAN'] = (df.model_GAN >= thresh).astype('int')
@@ -657,12 +672,15 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     config = argparser(is_train=True)
     all_train_dir,all_result_file_name = construct_train_dir(config)
+    # config.cross_validation_number
 
     while whichFoldData < config.cross_validation_number:
         if config.train:
-            dataset_test, all_hdf5_data,sess,saver=train(config, whichFoldData, all_train_dir)
+            dataset_test, all_hdf5_data=train(config, whichFoldData, all_train_dir)
         if config.test:
-            eval_run(all_result_file_name[whichFoldData], all_result_file_name[10], dataset_test[whichFoldData], whichFoldData, all_hdf5_data,config,sess,saver,all_train_dir[whichFoldData])
+            # images, labels, num_examples_per_epoch_for_train, dataset_test, all_hdf5_data = mri.distorted_inputs(config,
+            #                                                                                                      whichFoldData)
+            eval_run(all_result_file_name[whichFoldData], all_result_file_name[10], dataset_test[whichFoldData], whichFoldData, all_hdf5_data,config,all_train_dir[whichFoldData])
         whichFoldData = whichFoldData + 1
 
 
@@ -678,16 +696,38 @@ def main(argv=None):  # pylint: disable=unused-argument
     # auc_10folds_all = []
     #
     #
+
+    all_folds_predict_data = []
+
+    with open('./data2/GANresults/' + all_result_file_name[10] + '.csv', "w") as text_file:
+        for i in range(10):
+            # Open a file: file
+            file = open('./data2/GANresults/' + all_result_file_name[i] + '.csv', mode='r')
+
+            # read all lines at once
+            all_of_it = file.read()
+
+            if i == 0:
+                text_file.write(all_of_it)
+            else:
+                all_lines = all_of_it.splitlines()
+                j = 0
+                for each_line in all_lines:
+                    if j > 0:
+                        text_file.write(each_line)
+                        text_file.write('\r\n')
+                    j = j + 1
+
+            # close the file
+        file.close()
+
     fold_write = 0
-
-
-
     # for each_result_file_name in trainer.all_results_file_name:
     for each_result_file_name in all_result_file_name:
         # accuracy, recall, precision, f1, auc_GAN , CM = calculateConfusionMatrix(each_result_file_name)
         accuracy, CM = calculateConfusionMatrix(each_result_file_name)
 
-        with open("/home/wenyu/Documents/GANresults/ConfusionMatrix.txt", "w") as text_file:
+        with open("./GANconfusionMatrixResults/ConfusionMatrix"+str(fold_write)+".txt", "w") as text_file:
             log.info("Fold: {}".format(fold_write))
             log.info("accuracy: {}".format(accuracy))
             text_file.write("Fold: {}".format(fold_write))
@@ -698,7 +738,7 @@ def main(argv=None):  # pylint: disable=unused-argument
             # text_file.write("auc_GAN: {}".format(auc_GAN))
             text_file.write("Confusion matrix for fold {}".format(fold_write))
 
-            text_file.write(np.matrix(CM))
+            text_file.write(CM)
 
         accuracy_10folds_all.append(accuracy)
         # recall_10folds_all.append(recall)
@@ -720,7 +760,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     # auc_10folds_average = np.mean(auc_10folds_all)
 
 
-    with open("/home/wenyu/Documents/GANresults/ConfusionMatrix.txt", "w") as text_file:
+    with open("./GANconfusionMatrixResults/allConfusionMatrix.txt", "w") as text_file:
         text_file.write("Fold: average 10 folds confusion matrix ")
         text_file.write("accuracy: {}".format(accuracy_10folds_average))
         log.info("Fold: average 10 folds confusion matrix ")

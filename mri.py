@@ -19,7 +19,7 @@ from ops import transition_layer_to_classes
 from ops import grouped_conv2d_Discriminator_one
 from ops import conv3d_denseNet_first_layer
 from datasets.hdf5_loader import get_data
-
+import tensorflow.contrib.slim as slim
 
 
 
@@ -36,8 +36,7 @@ INITIAL_LEARNING_RATE = 0.1       # Initial learning rate.
 # If a model is trained with multiple GPUs, prefix all Op names with tower_name
 # to differentiate the operations. Note that this prefix is removed from the
 # names of the summaries when visualizing a model.
-TOWER_NAME = 'tower'
-
+TOWER_NAME = 'Discriminator_tower'
 
 
 def _activation_summary(x):
@@ -113,7 +112,7 @@ def distorted_inputs(config,whichFoldData):
   Raises:
     ValueError: If no data_dir
   """
-  dataset_path = os.path.join(r"/data1/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/")
+  dataset_path = os.path.join(r"./datasets/mri/")
 
   dataset_train, dataset_test, all_hdf5_data = create_default_splits(dataset_path, hdf5FileName=config.hdf5FileName,
                                                               idFileName=config.idFileName,
@@ -140,7 +139,7 @@ def distorted_inputs(config,whichFoldData):
     # images = tf.cast(images, tf.float16)
     # labels = tf.cast(labels, tf.float16)
   images, labels = batch_train['image'], batch_train['label']
-  return images, labels, len(dataset_train[0]), dataset_test, all_hdf5_data
+  return images, labels, len(dataset_train[whichFoldData]), dataset_test, all_hdf5_data
 
 
 def distorted_inputs_test(all_hdf5_data,dataset_test,batch_size, which_fold_data):
@@ -151,31 +150,6 @@ def distorted_inputs_test(all_hdf5_data,dataset_test,batch_size, which_fold_data
   return ids,images, labels
 
 
-
-
-def inputs(eval_data):
-  """Construct input for CIFAR evaluation using the Reader ops.
-
-  Args:
-    eval_data: bool, indicating if one should use the train or eval data set.
-
-  Returns:
-    images: Images. 4D tensor of [batch_size, IMAGE_SIZE, IMAGE_SIZE, 3] size.
-    labels: Labels. 1D tensor of [batch_size] size.
-
-  Raises:
-    ValueError: If no data_dir
-  """
-  if not config.data_dir:
-    raise ValueError('Please supply a data_dir')
-  data_dir = os.path.join(config.data_dir, 'cifar-10-batches-bin')
-  images, labels = mri_input.inputs(eval_data=eval_data,
-                                        data_dir=data_dir,
-                                        batch_size=config.batch_size)
-  if config.use_fp16:
-    images = tf.cast(images, tf.float16)
-    labels = tf.cast(labels, tf.float16)
-  return images, labels
 
 
 def inference(images,config):
@@ -217,28 +191,31 @@ def inference(images,config):
                 layers_per_block))
   print("Reduction at transition layers: %.1f" % reduction)
 
+  with tf.variable_scope("Discriminator"):
+      with tf.variable_scope("Initial_convolution"):
+          output = conv3d_denseNet_first_layer(
+              images,
+              out_features=first_output_features,
+              kernel_size=3)
+
+      # add N required blocks
+      for block in range(total_blocks):
+          with tf.variable_scope("Block_%d" % block):
+              output = add_block(keep_prob, _is_train, output, growth_rate, layers_per_block, bc_mode)
+          # last block exist without transition layer
+          if block != total_blocks - 1:
+              with tf.variable_scope("Transition_after_block_%d" % block):
+                  output = transition_layer(output, _is_train, keep_prob, reduction)
+
+      with tf.variable_scope("Transition_to_classes"):
+          softmax_linear = transition_layer_to_classes(output, _num_class, _is_train)
+
+  all_var = tf.trainable_variables()
+  d_var = [v for v in all_var if v.name.startswith('Discriminator')]
+  log.warn("********* d_var ********** ")
+  slim.model_analyzer.analyze_vars(d_var, print_info=True)
 
 
-
-
-
-  with tf.variable_scope("Initial_convolution"):
-      output = conv3d_denseNet_first_layer(
-          images,
-          out_features=first_output_features,
-          kernel_size=3)
-
-  # add N required blocks
-  for block in range(total_blocks):
-      with tf.variable_scope("Block_%d" % block):
-          output = add_block(keep_prob, _is_train, output, growth_rate, layers_per_block, bc_mode)
-      # last block exist without transition layer
-      if block != total_blocks - 1:
-          with tf.variable_scope("Transition_after_block_%d" % block):
-              output = transition_layer(output, _is_train, keep_prob, reduction)
-
-  with tf.variable_scope("Transition_to_classes"):
-      softmax_linear = transition_layer_to_classes(output, _num_class, _is_train)
 
   # var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, self.name)
   return softmax_linear
