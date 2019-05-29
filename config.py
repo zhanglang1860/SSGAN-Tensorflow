@@ -34,16 +34,16 @@ def argparser(is_train=True):
     # log
     parser.add_argument('--log_step', type=int, default=10)
     parser.add_argument('--write_summary_step', type=int, default=100)
-    parser.add_argument('--batch_size', type=int, default=16)
+    parser.add_argument('--batch_size', type=int, default=10)
     parser.add_argument('--ckpt_save_step', type=int, default=50)
     parser.add_argument('--test_sample_step', type=int, default=100)
     parser.add_argument('--output_save_step', type=int, default=50)
     # learning
     parser.add_argument('--max_sample', type=int, default=5000,
                         help='num of samples the model can see')
-    parser.add_argument('--max_training_steps', type=int, default=6000)
+    parser.add_argument('--max_training_steps', type=int, default=20000)
     parser.add_argument('--learning_rate_g', type=float, default=0.0025)
-    parser.add_argument('--learning_rate_d', type=float, default=0.01)
+    parser.add_argument('--learning_rate_d', type=float, default=0.1)
     parser.add_argument('--update_rate', type=int, default=6)
     parser.add_argument('--num_gpus', type=int, default=2)
     # }}}
@@ -71,8 +71,8 @@ def argparser(is_train=True):
         help='Grows rate for every layer, '
              'choices were restricted to used in paper')
     parser.add_argument(
-        '--depth', '-d', type=int, choices=[40, 100, 190, 250],
-        default=40,
+        '--depth', '-d', type=int, choices=[30,40, 100, 190, 250],
+        default=30,
         help='Depth of whole network, restricted to paper choices')
 
     parser.add_argument(
