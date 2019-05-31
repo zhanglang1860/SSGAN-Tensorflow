@@ -32,7 +32,7 @@ class Dataset(object):
 
     def get_data(self, id):
         # preprocessing and data augmentation
-        img = self.data[id]['image'].value/255. * 2 - 1
+        img = self.data[id]['image'].value.astype(np.float32)/255. * 2 - 1
         l = self.data[id]['label'].value.astype(np.float32)
         return img, l
 

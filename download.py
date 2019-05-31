@@ -11,7 +11,8 @@ import tables
 import cv2
 from math import ceil
 import matplotlib.pyplot as plt
-import nibabel as nib
+
+import nipy
 
 parser = argparse.ArgumentParser(description='Download dataset for SSGAN.')
 parser.add_argument('--datasets', metavar='N', type=str, nargs='+', choices=['MNIST', 'SVHN', 'CIFAR10'])
@@ -89,9 +90,6 @@ def prepare_h5py_mri2(image, label, data_dir, num_class=10,shape=None,first_clas
     return
 
 
-
-
-
 def prepare_h5py_mri3(image, label, data_dir, num_class=10,shape=None):
 
     print('Preprocessing data...')
@@ -106,8 +104,8 @@ def prepare_h5py_mri3(image, label, data_dir, num_class=10,shape=None):
     data_id = open(os.path.join(data_dir, 'MRIdata_3_AD_MCI_Normal_id.txt'), 'w')
     for i in range(image.shape[0]):
 
-        if i % (image.shape[0] / 100) == 0:
-            bar.update(i / (image.shape[0] / 100))
+        # if i % (image.shape[0] / 100) == 0:
+        #     bar.update(i / (image.shape[0] / 100))
 
         grp = f.create_group(str(i))
         data_id.write(str(i) + '\n')
@@ -269,7 +267,7 @@ def download_mri2_class(download_path):
 
     data_dir = os.path.join(download_path, 'mri')
 
-    all_jpg_path = '/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/all/'
+    all_jpg_path = '/data1/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/all/'
 
     if check_file(data_dir):
         print('mri was downloaded.')
@@ -284,11 +282,11 @@ def download_mri2_class(download_path):
         image_class_list.append([])
         label_class_list.append([])
 
-    for i in range(len(real_labels)):
-        image_class_list[i] = []
-        label_class_list[i] = []
+    # for i in range(len(real_labels)):
+    #     image_class_list[i] = []
+    #     label_class_list[i] = []
 
-    with open("/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/label.csv") as file:
+    with open("/data1/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/label.csv") as file:
         for line in file:
             strFull = line.split(',')
             strFull[0]=strFull[0]+'.nii'
@@ -324,21 +322,20 @@ def download_mri2_class(download_path):
             for index in range(len(addrs)):
                 addr = addrs[index]
                 # Get nibabel image object
-                img = nib.load(all_jpg_path + addr)
-                # Get data from nibabel image object (returns numpy memmap object)
-                img_data = img.get_data()
-                # Convert to numpy ndarray (dtype: uint16)
-                img_data_arr = (np.array(img_data)).astype('float64')
-                all_images.append(img_data_arr)
+                mri = nipy.load_image(all_jpg_path + addr).get_data().transpose((1, 0, 2))
+                data = np.zeros((109, mri.shape[1], mri.shape[2], 1), dtype='float32')
+                mx = mri.max(axis=0).max(axis=0).max(axis=0)
+                mri = np.array(mri) / mx
+                data[:, :, :, 0] = mri
+                all_images.append(data)
 
+            # def show_img(ori_img):
+            #     plt.imshow(ori_img[:, :, 91], cmap='gray')  # channel_last
+            #     plt.show()
 
-            all_label = np.array(labels, dtype=np.float)
-
-            all_image = np.array(all_images, dtype=np.float64)
-            label = np.array(all_label)
-            all_image =all_image.astype(np.uint8)
-            label = label.astype(np.uint8)
-            prepare_h5py_mri2(all_image, label, data_dir, 2,first_class_label=real_labels[i],second_class_label=real_labels[j])
+            all_label = np.array(labels, dtype=np.uint8)
+            all_image = np.array(all_images, dtype=np.float32)
+            prepare_h5py_mri2(all_image, all_label, data_dir, 2,first_class_label=real_labels[i],second_class_label=real_labels[j])
             j=j+1
 
 
@@ -346,9 +343,8 @@ def download_mri2_class(download_path):
 def download_mri3_class(download_path):
     shuffle_data = True
     data_dir = os.path.join(download_path, 'mri')
-    hdf5_path = os.path.join(data_dir, '/data.hdf5')
 
-    all_jpg_path = '/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/all/'
+    all_jpg_path = '/data1/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/all/'
 
     if check_file(data_dir):
         print('ulna was downloaded.')
@@ -357,7 +353,7 @@ def download_mri3_class(download_path):
 
     addrs = []
     labels = []
-    with open("/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/label.csv") as file:
+    with open("/data1/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/label.csv") as file:
         for line in file:
             strFull = line.split(',')
             strFull[0]=strFull[0]+'.nii'
@@ -375,25 +371,27 @@ def download_mri3_class(download_path):
 
     all_images =[]
 
+    # for i in range(1):
     for i in range(len(addrs)):
+
         addr = addrs[i]
         # Get nibabel image object
-        img = nib.load(all_jpg_path+addr)
-        # Get data from nibabel image object (returns numpy memmap object)
-        img_data = img.get_data()
-        # Convert to numpy ndarray (dtype: uint16)
-        img_data_arr = (np.array(img_data)).astype('float64')
-        all_images.append(img_data_arr)
+        mri = nipy.load_image(all_jpg_path+addr).get_data().transpose((1,0,2))
+        data = np.zeros((109, mri.shape[1], mri.shape[2], 1), dtype='float32')
+        mx = mri.max(axis=0).max(axis=0).max(axis=0)
+        mri = np.array(mri) / mx
+        data[:, :, :, 0] = mri
+        all_images.append(data)
+
+    all_image = np.array(all_images, dtype=np.float32)
+    label = np.array(labels, dtype=np.uint8)
 
 
-
-    all_image = np.array(all_images, dtype=np.float64)
-    label = np.array(labels, dtype=np.float)
-    all_image = all_image.astype(np.uint8)
-    label = label.astype(np.uint8)
     prepare_h5py_mri3(all_image, label, data_dir,3)
 
-
+def show_img2(ori_img):
+    plt.imshow(ori_img[:, :, 1], cmap='gray')  # channel_last
+    plt.show()
 
 
 def download_svhn(download_path):
@@ -502,7 +500,9 @@ class Logger(object):
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    path = r"/media/wenyu/8d268d3e-37df-4af4-ab98-f5660b2e71a7/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets"
+    path = r"/data1/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/all"
+
+
     if not os.path.exists(path): os.mkdir(path)
 
     download_mri2_class(path)
