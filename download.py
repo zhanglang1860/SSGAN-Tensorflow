@@ -327,14 +327,15 @@ def download_mri2_class(download_path):
                 mx = mri.max(axis=0).max(axis=0).max(axis=0)
                 mri = np.array(mri) / mx
                 data[:, :, :, 0] = mri
-                all_images.append(data)
+                mri_final = np.array(data)
+                all_images.append(mri_final)
 
             # def show_img(ori_img):
             #     plt.imshow(ori_img[:, :, 91], cmap='gray')  # channel_last
             #     plt.show()
 
             all_label = np.array(labels, dtype=np.uint8)
-            all_image = np.array(all_images, dtype=np.float32)
+            all_image = np.array(all_images)
             prepare_h5py_mri2(all_image, all_label, data_dir, 2,first_class_label=real_labels[i],second_class_label=real_labels[j])
             j=j+1
 
@@ -381,9 +382,15 @@ def download_mri3_class(download_path):
         mx = mri.max(axis=0).max(axis=0).max(axis=0)
         mri = np.array(mri) / mx
         data[:, :, :, 0] = mri
-        all_images.append(data)
+        mri_final = np.array(data)
+        all_images.append(mri_final)
 
-    all_image = np.array(all_images, dtype=np.float32)
+        # def show_img(ori_img):
+        #     plt.imshow(ori_img[:, :, 91], cmap='gray')  # channel_last
+        #     plt.show()
+
+
+    all_image = np.array(all_images)
     label = np.array(labels, dtype=np.uint8)
 
 
