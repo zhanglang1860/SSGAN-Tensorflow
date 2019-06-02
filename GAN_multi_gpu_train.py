@@ -78,6 +78,10 @@ from sklearn.metrics import roc_curve
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_auc_score
 import math
+from tensorflow.python.framework import ops
+from tensorflow.python.ops import math_ops
+from sklearn.metrics import classification_report
+
 
 
 class EvalManager(object):
@@ -121,7 +125,7 @@ class EvalManager(object):
 
 
 
-    def report(self,result_file_name, all_result_file_name,whichFoldData):
+    def report(self,result_file_name):
         # report L2 loss
         # log.info("Computing scores...")
 
@@ -133,7 +137,7 @@ class EvalManager(object):
             writer.writerow(['actual_label', 'model_GAN'])
             for pred, gt in u:
                 gt_csv = np.argmax(gt)
-                pred_csv = pred[np.argmax(gt)]
+                pred_csv = np.argmax(pred)
 
                 one_row = []
 
@@ -232,12 +236,12 @@ def construct_train_dir(config):
         1, config.update_rate, config.batch_size, config.max_training_steps
     )
 
-    config.prefix = 'depth{}_growthRate{}_reduce{}_model_type{}'.format(
+    config.prefix = 'depth{}_growthRate{}_reduce{}_model_type{}_keepPro{}'.format(
         config.depth, config.growth_rate, config.reduction,
-        config.model_type
+        config.model_type, config.keep_prob
     )
 
-    while whichFoldData<10:
+    while whichFoldData<config.cross_validation_number:
         hyper_parameter_str = 'fold_{}_{}_lr_g_{}_d_{}_update_G{}D{}_batchSize{}_maxIteration{}'.format(
             str(whichFoldData), temp[0], config.learning_rate_g, config.learning_rate_d,
             1, config.update_rate, config.batch_size, config.max_training_steps
@@ -294,21 +298,9 @@ def tower_loss(scope, images, labels,config):
 
   # Build the portion of the Graph calculating the losses. Note that we will
   # assemble the total_loss using a custom function below.
-  _ ,accuracy_each_batch,prediction,labels= mri.loss(logits, labels,config)
+  loss ,accuracy_each_batch,prediction,labels= mri.loss(logits, labels,config)
 
-  # Assemble all of the losses for the current tower only.
-  losses = tf.get_collection('losses', scope)
 
-  # Calculate the total loss for the current tower.
-  total_loss = tf.add_n(losses, name='total_loss')
-
-  # Attach a scalar summary to all individual losses and the total loss; do the
-  # same for the averaged version of the losses.
-  for l in losses + [total_loss]:
-    # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
-    # session. This helps the clarity of presentation on tensorboard.
-    loss_name = re.sub('%s_[0-9]*/' % mri.TOWER_NAME, '', l.op.name)
-    tf.summary.scalar(loss_name, l)
 
   # prediction=tf.get_collection('prediction_label', scope)
   # labels=tf.get_collection('target_label', scope)
@@ -319,11 +311,11 @@ def tower_loss(scope, images, labels,config):
   # accuracy_each_batch2 = tf.reduce_mean(tf.cast(correct_prediction_each_batch, tf.float32))
 
   tf.summary.scalar("loss/train_accuracy", accuracy_each_batch)
-  tf.summary.scalar("loss/D_total_loss", total_loss)
+  tf.summary.scalar("loss/D_total_loss_L2", loss)
 
 
 
-  return _, accuracy_each_batch,prediction,labels
+  return loss, accuracy_each_batch,prediction,labels
 
 
 def average_gradients(tower_grads):
@@ -376,7 +368,6 @@ def train(config,whichFoldData,all_train_dir):
 
     images, labels, num_examples_per_epoch_for_train, dataset_test, all_hdf5_data = mri.distorted_inputs(config,whichFoldData)
 
-    # Calculate the learning rate schedule.
     num_batches_per_epoch = (num_examples_per_epoch_for_train /
                              config.batch_size / config.num_gpus)
     decay_steps = int(num_batches_per_epoch * mri.NUM_EPOCHS_PER_DECAY)
@@ -387,6 +378,13 @@ def train(config,whichFoldData,all_train_dir):
                                     decay_steps,
                                     mri.LEARNING_RATE_DECAY_FACTOR,
                                     staircase=True)
+
+
+
+
+
+
+
 
     # Create an optimizer that performs gradient descent.
     opt = tf.train.MomentumOptimizer(
@@ -444,16 +442,12 @@ def train(config,whichFoldData,all_train_dir):
     for var in tf.trainable_variables():
       summaries.append(tf.summary.histogram(var.op.name, var))
 
-    # Track the moving averages of all trainable variables.
-    variable_averages = tf.train.ExponentialMovingAverage(
-        mri.MOVING_AVERAGE_DECAY, global_step)
-    variables_averages_op = variable_averages.apply(tf.trainable_variables())
 
     # Group all updates to into a single train op.
-    train_op = tf.group(apply_gradient_op, variables_averages_op)
+    train_op = apply_gradient_op
 
     # Create a saver.
-    saver = tf.train.Saver(tf.global_variables(),max_to_keep=30000)
+    saver = tf.train.Saver(tf.global_variables(),max_to_keep=0)
 
     # Build the summary operation from the last tower summaries.
     summary_op = tf.summary.merge(summaries)
@@ -476,6 +470,8 @@ def train(config,whichFoldData,all_train_dir):
 
     for step in xrange(config.max_training_steps):
       start_time = time.time()
+      # print("\n", '-' * 30, "Train epoch: %d" % global_step, '-' * 30, '\n')
+      print("\n", '-' * 30, "Train epoch: %d" % step, '-' * 30, '\n')
       _, loss_value,accuracy_each_batch_value ,prediction_value,labels_value = sess.run([train_op, loss, accuracy_each_batch,prediction,labels])
       duration = time.time() - start_time
 
@@ -513,7 +509,7 @@ def train(config,whichFoldData,all_train_dir):
     top_k_op: Top K op.
     summary_op: Summary op.
   """
-def eval_once(saver, summary_writer, predicts,labels, summary_op,train_dir, config,num_test_example,result_file_name, all_result_file_name, whichFoldData,loss):
+def eval_once(saver, summary_writer, predicts,labels, summary_op,train_dir, config,num_test_example,result_file_name, whichFoldData,loss):
 
     evaler = EvalManager()
     with tf.Session() as sess:
@@ -577,19 +573,19 @@ def eval_once(saver, summary_writer, predicts,labels, summary_op,train_dir, conf
 
       coord.request_stop()
       coord.join(threads, stop_grace_period_secs=10)
-      evaler.report(result_file_name, all_result_file_name, whichFoldData)
+      evaler.report(result_file_name)
       log.infov("Evaluation complete.")
 
 
 
-def eval_run(result_file_name,all_result_file_name, dataset_test, whichFoldData, all_hdf5_data,config,train_dir):
+def eval_run(result_file_name, dataset_test, whichFoldData, all_hdf5_data,config,train_dir):
 
     log.infov("Start 1-epoch Inference and Evaluation")
 
     log.info("# of examples = %d", len(dataset_test))
 
     batch_size= config.batch_size
-    total_start_time = time.time()
+
     with tf.Graph().as_default() as g:
 
         ids,images, labels = mri.distorted_inputs_test(all_hdf5_data,dataset_test,batch_size, whichFoldData)
@@ -606,7 +602,7 @@ def eval_run(result_file_name,all_result_file_name, dataset_test, whichFoldData,
         summary_op = tf.summary.merge_all()
 
         summary_writer = tf.summary.FileWriter(config.eval_dir, g)
-        eval_once(saver, summary_writer, predicts,labels, summary_op,train_dir,config,len(dataset_test),result_file_name, all_result_file_name, whichFoldData,loss)
+        eval_once(saver, summary_writer, predicts,labels, summary_op,train_dir,config,len(dataset_test),result_file_name, whichFoldData,loss)
 
 
 
@@ -614,23 +610,19 @@ def eval_run(result_file_name,all_result_file_name, dataset_test, whichFoldData,
 
 
 
-def calculateConfusionMatrix(each_result_file_name):
+def calculateConfusionMatrix(each_result_file_name,class_labels):
     df = pd.read_csv('./data2/GANresults/' + each_result_file_name + '.csv')
-    df.head()
-    thresh = 0.5
-    df['predicted_GAN'] = (df.model_GAN >= thresh).astype('int')
+
     df.head()
 
-    CM = confusion_matrix(df.actual_label.values, df.predicted_GAN.values)
-
-
+    cr = classification_report(df.actual_label.values, df.model_GAN.values, target_names=class_labels)
+    cm = np.array2string(confusion_matrix(df.actual_label.values, df.model_GAN.values))
 
     accuracy = accuracy_score(df.actual_label.values, df.predicted_GAN.values)
     # recall = recall_score(df.actual_label.values, df.predicted_GAN.values)
     # precision = precision_score(df.actual_label.values, df.predicted_GAN.values)
     # f1 = f1_score(df.actual_label.values, df.predicted_GAN.values)
 
-    print('scores with threshold = 0.5')
     print('Accuracy GAN: %.3f' % (accuracy))
     # print('Recall GAN: %.3f' % (recall))
     # print('Precision GAN: %.3f' % (precision))
@@ -659,7 +651,7 @@ def calculateConfusionMatrix(each_result_file_name):
     # plt.ylabel('True Positive Rate')
     # plt.show()
     # return accuracy, recall, precision, f1, auc_GAN, CM
-    return accuracy, CM
+    return accuracy, cr,cm
 
 
 
@@ -680,7 +672,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         if config.test:
             # images, labels, num_examples_per_epoch_for_train, dataset_test, all_hdf5_data = mri.distorted_inputs(config,
             #                                                                                                      whichFoldData)
-            eval_run(all_result_file_name[whichFoldData], all_result_file_name[10], dataset_test[whichFoldData], whichFoldData, all_hdf5_data,config,all_train_dir[whichFoldData])
+            eval_run(all_result_file_name[whichFoldData], dataset_test[whichFoldData], whichFoldData, all_hdf5_data,config,all_train_dir[whichFoldData])
         whichFoldData = whichFoldData + 1
 
 
@@ -722,25 +714,34 @@ def main(argv=None):  # pylint: disable=unused-argument
         file.close()
 
     fold_write = 0
+    input_file_name=config.hdf5FileName
+    class_labels = []
+    name_list = input_file_name.split("_")
+    if int(name_list[1]) == 3:
+        class_labels.append(name_list[2])
+        class_labels.append(name_list[3])
+        last_class = name_list[4].split(".")
+        class_labels.append(last_class[0])
+    else:
+        class_labels.append(name_list[2])
+        last_class = name_list[3].split(".")
+        class_labels.append(last_class[0])
+
     # for each_result_file_name in trainer.all_results_file_name:
     for each_result_file_name in all_result_file_name:
         # accuracy, recall, precision, f1, auc_GAN , CM = calculateConfusionMatrix(each_result_file_name)
-        accuracy, CM = calculateConfusionMatrix(each_result_file_name)
+        accuracy, cr,cm = calculateConfusionMatrix(each_result_file_name,class_labels)
 
-        with open("./GANconfusionMatrixResults/ConfusionMatrix"+str(fold_write)+".txt", "w") as text_file:
-            log.info("Fold: {}".format(fold_write))
-            log.info("accuracy: {}".format(accuracy))
-            text_file.write("Fold: {}".format(fold_write))
-            text_file.write("accuracy: {}".format(accuracy))
-            # text_file.write("recall: {}".format(recall))
-            # text_file.write("precision: {}".format(precision))
-            # text_file.write("f1: {}".format(f1))
-            # text_file.write("auc_GAN: {}".format(auc_GAN))
-            text_file.write("Confusion matrix for fold {}".format(fold_write))
+        f = open("./GANconfusionMatrixResults/ConfusionMatrix"+str(fold_write)+".txt", 'w')
+        log.info("Fold: {}".format(fold_write))
+        f.write("Fold: {}".format(fold_write))
+        f.write('{}\n\nClassification Report\n\n{}\n\nConfusion Matrix\n\n{}\n'.format(config.hdf5FileName, cr, cm))
+        f.write("accuracy: {}".format(accuracy))
+        log.info("accuracy: {}".format(accuracy))
+        f.close()
+        if fold_write < 10:
+            accuracy_10folds_all.append(accuracy)
 
-            text_file.write(CM)
-
-        accuracy_10folds_all.append(accuracy)
         # recall_10folds_all.append(recall)
         # precision_10folds_all.append(precision)
         # f1_10folds_all.append(f1)

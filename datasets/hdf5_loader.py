@@ -66,10 +66,9 @@ def __init__(self, path, ids, name='default',
 def get_data(id, all_hdf5_data):
     # preprocessing and data augmentation
     # id= int(id)
-    images = all_hdf5_data[id]['image'].value / 255.
+    images = all_hdf5_data[id]['image'].value
     l = all_hdf5_data[id]['label'].value.astype(np.float32)
 
-    images =np.reshape(images, (images.shape[0], images.shape[1],images.shape[2],1))
 
     return images, l
 

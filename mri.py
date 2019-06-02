@@ -16,7 +16,7 @@ from ops import depthwise_conv2d
 from ops import fc
 from ops import transition_layer
 from ops import transition_layer_to_classes
-from ops import grouped_conv2d_Discriminator_one
+from ops import pool
 from ops import conv3d_denseNet_first_layer
 from datasets.hdf5_loader import get_data
 import tensorflow.contrib.slim as slim
@@ -29,7 +29,7 @@ NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = mri_input.NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
 
 # Constants describing the training process.
 MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
-NUM_EPOCHS_PER_DECAY = 350.0      # Epochs after which learning rate decays.
+NUM_EPOCHS_PER_DECAY = 75.0      # Epochs after which learning rate decays.
 LEARNING_RATE_DECAY_FACTOR = 0.1  # Learning rate decay factor.
 INITIAL_LEARNING_RATE = 0.1       # Initial learning rate.
 
@@ -196,7 +196,10 @@ def inference(images,config):
           output = conv3d_denseNet_first_layer(
               images,
               out_features=first_output_features,
-              kernel_size=3)
+              kernel_size=7,
+              strides=[1, 1, 2, 2, 1])
+          # first pooling
+          output = pool(output, k=3, d=3, k_stride=2, d_stride=1)
 
       # add N required blocks
       for block in range(total_blocks):
@@ -205,13 +208,16 @@ def inference(images,config):
           # last block exist without transition layer
           if block != total_blocks - 1:
               with tf.variable_scope("Transition_after_block_%d" % block):
-                  output = transition_layer(output, _is_train, keep_prob, reduction)
+                  pool_depth = 2
+                  output = transition_layer(output, _is_train, keep_prob, reduction,pool_depth)
 
       with tf.variable_scope("Transition_to_classes"):
           softmax_linear = transition_layer_to_classes(output, _num_class, _is_train)
 
   all_var = tf.trainable_variables()
   d_var = [v for v in all_var if v.name.startswith('Discriminator')]
+  log.warn("********* all_var ********** ")
+  slim.model_analyzer.analyze_vars(all_var, print_info=True)
   log.warn("********* d_var ********** ")
   slim.model_analyzer.analyze_vars(d_var, print_info=True)
 
@@ -234,27 +240,27 @@ def loss(logits, labels, config):
     Loss tensor of type float.
   """
   # Calculate the average cross entropy loss across the batch.
-  labels = tf.cast(labels, tf.int64)
+  prediction = tf.nn.softmax(logits)
+  labels = tf.cast(labels, tf.int32)
 
   cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
-      labels=labels, logits=logits, name='cross_entropy_per_example')
-  cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy_per_batch')
-  tf.add_to_collection('losses', cross_entropy_mean)
+      labels=labels, logits=logits)#, name='cross_entropy_per_batch'
+  cross_entropy_mean = tf.reduce_mean(cross_entropy)#, name='cross_entropy_per_batch'
+  # tf.add_to_collection('losses', cross_entropy_mean)
 
   # The total loss is defined as the cross entropy loss plus all of the weight
   # decay terms (L2 loss).
 
-  total_loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
+  # total_loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
+  all_var = tf.trainable_variables()
+  d_var = [v for v in all_var if v.name.startswith('Discriminator')]
 
   l2_loss = tf.add_n(
-      [tf.nn.l2_loss(var) for var in tf.trainable_variables()])
+      [tf.nn.l2_loss(var) for var in d_var])
 
-  loss_l2_regular = total_loss + l2_loss * config.weight_decay
+  loss_l2_regular = cross_entropy_mean + l2_loss * config.weight_decay
 
-  prediction = tf.nn.softmax(logits)
 
-  tf.add_to_collection('prediction_label', prediction)
-  tf.add_to_collection('target_label', labels)
 
   correct_prediction_each_batch = tf.equal(
       tf.argmax(prediction, 1),

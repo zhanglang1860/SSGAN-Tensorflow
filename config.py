@@ -19,9 +19,9 @@ def argparser(is_train=True):
     parser.add_argument('--eval_dir', type=str, default='./data2/3dDenseNetEvaluate')
 
     parser.add_argument('--checkpoint', type=str, default=None)
-    parser.add_argument('--hdf5FileName', type=str, default='MRIdata_3_AD_MCI_Normal_teset.hdf5',
+    parser.add_argument('--hdf5FileName', type=str, default='MRIdata_3_AD_MCI_Normal.hdf5',
                         choices=['MRIdata_3_AD_MCI_Normal_test.hdf5','MRIdata_2_AD_MCI.hdf5', 'MRIdata_2_AD_Normal.hdf5', 'MRIdata_2_MCI_Normal.hdf5', 'MRIdata_3_AD_MCI_Normal.hdf5','data.hdf5'])
-    parser.add_argument('--idFileName', type=str, default='MRIdata_3_AD_MCI_Normal_id_test.txt',
+    parser.add_argument('--idFileName', type=str, default='MRIdata_3_AD_MCI_Normal_id.txt',
                         choices=['MRIdata_3_AD_MCI_Normal_id_test.txt','MRIdata_2_AD_MCI_id.txt', 'MRIdata_2_AD_Normal_id.txt', 'MRIdata_2_MCI_Normal_id.txt',  'MRIdata_3_AD_MCI_Normal_id.txt','id.txt'])
     parser.add_argument('--dump_result', type=str2bool, default=False)
     # Model
@@ -39,11 +39,13 @@ def argparser(is_train=True):
     parser.add_argument('--test_sample_step', type=int, default=100)
     parser.add_argument('--output_save_step', type=int, default=50)
     # learning
-    parser.add_argument('--max_sample', type=int, default=5000,
+    parser.add_argument('--max_sample', type=int, default=50000,
                         help='num of samples the model can see')
-    parser.add_argument('--max_training_steps', type=int, default=20000)
+    parser.add_argument('--max_training_steps', type=int, default=5)
+    parser.add_argument('--reduce_lr_epoch_1', type=int, default=75)
+    parser.add_argument('--reduce_lr_epoch_2', type=int, default=110)
     parser.add_argument('--learning_rate_g', type=float, default=0.0025)
-    parser.add_argument('--learning_rate_d', type=float, default=0.1)
+    parser.add_argument('--learning_rate_d', type=float, default=0.01)
     parser.add_argument('--update_rate', type=int, default=6)
     parser.add_argument('--num_gpus', type=int, default=2)
     # }}}
@@ -71,7 +73,7 @@ def argparser(is_train=True):
         help='Grows rate for every layer, '
              'choices were restricted to used in paper')
     parser.add_argument(
-        '--depth', '-d', type=int, choices=[30,40, 100, 190, 250],
+        '--depth', '-d', type=int, choices=[15, 20, 25, 30, 35, 40, 100, 190, 250],
         default=30,
         help='Depth of whole network, restricted to paper choices')
 
@@ -89,7 +91,7 @@ def argparser(is_train=True):
         '--reduction', '-red', type=float, default=0.5, metavar='',
         help='reduction Theta at transition layer for DenseNets-BC models')
     parser.add_argument(
-        '--weight_decay', '-wd', type=float, default=5e-4, metavar='',
+        '--weight_decay', '-wd', type=float, default=1e-4, metavar='',
         help='Weight decay for optimizer (default: %(default)s)')
 
 
@@ -107,7 +109,7 @@ def argparser(is_train=True):
 
     if config.model_type == 'DenseNet':
         config.bc_mode = False
-        # config.reduction = 1.0
+        config.reduction = 1.0
     elif config.model_type == 'DenseNet-BC':
         config.bc_mode = True
 
@@ -122,12 +124,5 @@ def argparser(is_train=True):
     print("Params:")
     for k, v in model_params.items():
         print("\t%s: %s" % (k, v))
-
-
-    print("Prepare training data...")
-
-
-
-
 
     return config

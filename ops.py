@@ -93,9 +93,11 @@ def conv2d(input, output_shape, is_train, info=False, k=4, s=2, stddev=0.01,
     return _
 
 def batch_norm(_input,is_training):
-    output = tf.contrib.layers.batch_norm(
-        _input, scale=True, is_training=is_training,
-        updates_collections=None)
+    with tf.name_scope("batch_normalization"):
+        output = tf.contrib.layers.batch_norm(
+            _input, scale=True, is_training=is_training,
+            updates_collections=None)
+
     return output
 
 def _activation_summary(x):
@@ -129,7 +131,9 @@ def composite_function(_input, out_features, is_training,keep_prob,kernel_size=3
         # BN
         output = batch_norm(_input,is_training=False)
         # ReLU
-        output = tf.nn.relu(output)
+        with tf.name_scope("ReLU"):
+            output = tf.nn.relu(output)
+
         # convolution
         output = conv3d_denseNet(
             output, out_features=out_features, kernel_size=kernel_size)
@@ -178,9 +182,23 @@ def avg_pool_final(_input, a,b,c):
     output = tf.nn.avg_pool3d(_input, ksize, strides, padding)
     return output
 
+def pool(_input, k, d=2, width_k=None, type='avg', k_stride=None, d_stride=None, k_stride_width=None):
+    if not width_k: width_k = k
+    ksize = [1, d, k, width_k, 1]
+    if not k_stride: k_stride = k
+    if not k_stride_width: k_stride_width = k_stride
+    if not d_stride: d_stride = d
+    strides = [1, d_stride, k_stride, k_stride_width, 1]
+    padding = 'SAME'
+    if type is 'max':
+      output = tf.nn.max_pool3d(_input, ksize, strides, padding)
+    elif type is 'avg':
+      output = tf.nn.avg_pool3d(_input, ksize, strides, padding)
+    else:
+      output = None
+    return output
 
-
-def transition_layer(_input,is_training,keep_prob,reduction):
+def transition_layer(_input,is_training,keep_prob,reduction, pool_depth=2):
     """Call H_l composite function with 1x1 kernel and after average
     pooling
     """
@@ -189,8 +207,9 @@ def transition_layer(_input,is_training,keep_prob,reduction):
     output = composite_function(
         _input, out_features=out_features, is_training=is_training, keep_prob=keep_prob, kernel_size=1)
     # run average pooling
-    if min(int(output.get_shape()[1]),int(output.get_shape()[2]),int(output.get_shape()[3]))>1:
-        output = avg_pool(output, k=2)
+    # if min(int(output.get_shape()[1]),int(output.get_shape()[2]),int(output.get_shape()[3]))>1:
+    with tf.name_scope("pooling"):
+        output = pool(output, k=2, d=pool_depth)
 
     _activation_summary(output)
     return output
@@ -218,10 +237,14 @@ def transition_layer_to_classes(_input, n_classes,_is_train):
     output = batch_norm(_input,_is_train)
     # ReLU
     output = tf.nn.relu(output)
-    # average pooling
-    # last_pool_kernel = 7
-    # output = avg_pool(output, k=last_pool_kernel)
-    output = avg_pool_final(_input, output.get_shape()[1], output.get_shape()[2], output.get_shape()[3])
+    last_pool_kernel_width = int(output.get_shape()[-2])
+    last_pool_kernel_height = int(output.get_shape()[-3])
+    last_sequence_length = int(output.get_shape()[1])
+    with tf.name_scope("pooling"):
+        output = pool(output, k=last_pool_kernel_height,
+                           d=last_sequence_length,
+                           width_k=last_pool_kernel_width,
+                           k_stride_width=last_pool_kernel_width)
 
     # FC
     features_total = int(output.get_shape()[-1])
@@ -295,8 +318,8 @@ def _variable_on_cpu(name, shape, initializer):
     Variable Tensor
   """
   with tf.device('/cpu:0'):
-    dtype = tf.float32
-    var = tf.get_variable(name, shape, initializer=initializer, dtype=dtype)
+    # dtype = tf.float32
+    var = tf.get_variable(name, shape, initializer=initializer)
   return var
 
 
@@ -320,10 +343,7 @@ def _variable_with_weight_decay(name, shape, stddev, wd):
   var = _variable_on_cpu(
       name,
       shape,
-      tf.truncated_normal_initializer(stddev=stddev, dtype=dtype))
-  if wd is not None:
-    weight_decay = tf.multiply(tf.nn.l2_loss(var), wd, name='weight_loss')
-    tf.add_to_collection('losses', weight_decay)
+      tf.contrib.layers.variance_scaling_initializer())
   return var
 
 
