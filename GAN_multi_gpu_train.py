@@ -48,7 +48,7 @@ import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 from config import argparser
-from util import log
+
 import mri
 import os
 import time
@@ -81,148 +81,8 @@ import math
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import math_ops
 from sklearn.metrics import classification_report
-
-
-
-class EvalManager(object):
-
-    def __init__(self):
-        # collection of batches (not flattened)
-        self._ids = []
-        self._predictions = []
-        self._groundtruths = []
-
-    # def add_batch(self, id, prediction, groundtruth):
-    #
-    #     # for now, store them all (as a list of minibatch chunks)
-    #     self._ids.append(id)
-    #     self._predictions.append(prediction)
-    #     self._groundtruths.append(groundtruth)
-
-    def compute_accuracy(self, pred, gt):
-        correct_prediction = np.sum(np.argmax(pred[:, :-1], axis=1) == np.argmax(gt, axis=1))
-        return float(correct_prediction)/pred.shape[0]
-
-
-
-    def add_batch_new(self, prediction, groundtruth):
-
-        # for now, store them all (as a list of minibatch chunks)
-        shold_be_batch_size=len(prediction)
-        for  index in range(shold_be_batch_size):
-            self._predictions.append(prediction[index])
-            self._groundtruths.append(groundtruth[index])
-
-
-    def add_batch(self, id, prediction, groundtruth):
-
-        # for now, store them all (as a list of minibatch chunks)
-        shold_be_batch_size=len(id)
-        for  index in range(shold_be_batch_size):
-            self._ids.append(id[index])
-            self._predictions.append(prediction[index])
-            self._groundtruths.append(groundtruth[index])
-
-
-
-    def report(self,result_file_name):
-        # report L2 loss
-        # log.info("Computing scores...")
-
-        z = zip(self._predictions, self._groundtruths)
-        u = list(z)
-
-        with open('./data2/GANresults/' + result_file_name + '.csv', mode='w') as file:
-            writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            writer.writerow(['actual_label', 'model_GAN'])
-            for pred, gt in u:
-                gt_csv = np.argmax(gt)
-                pred_csv = np.argmax(pred)
-
-                one_row = []
-
-                one_row.append(str(gt_csv))
-                one_row.append(str(pred_csv))
-
-                writer.writerow(one_row)
-
-
-
-        # with open('./data2/GANresults/' + all_result_file_name + '.csv', mode='w') as file:
-        #     writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        #     if whichFoldData == 0:
-        #         writer.writerow(['actual_label', 'model_GAN'])
-        #         for pred, gt in u:
-        #             gt_csv = np.argmax(gt)
-        #             pred_csv = pred[np.argmax(gt)]
-        #
-        #             one_row = []
-        #
-        #             one_row.append(str(gt_csv))
-        #             one_row.append(str(pred_csv))
-        #
-        #             writer.writerow(one_row)
-        #     else:
-        #         for pred, gt in u:
-        #             gt_csv = np.argmax(gt)
-        #             pred_csv = pred[np.argmax(gt)]
-        #
-        #             one_row = []
-        #
-        #             one_row.append(str(gt_csv))
-        #             one_row.append(str(pred_csv))
-        #
-        #             writer.writerow(one_row)
-
-
-
-
-
-
-
-    #
-    # def compute_accuracy(self, pred, gt):
-    #     correct_prediction = np.sum(np.argmax(pred) == np.argmax(gt))
-    #
-    #     return float(correct_prediction)/pred.shape[0]
-
-    def report_old(self,result_file_name):
-        # report L2 loss
-        log.info("Computing scores...")
-
-        score = []
-        self._ids = list(map(int, self._ids))
-
-        z = zip(self._ids, self._predictions, self._groundtruths)
-        u = list(z)
-        v = sorted(u, key=itemgetter(0))
-
-        # using naive method
-        # to remove duplicated
-        # from list
-        v_no_duplicates = []
-        for i_original in v:
-            if i_original[0] not in [i[0] for i in v_no_duplicates]:
-                v_no_duplicates.append(i_original)
-
-        with open('/home/wenyu/Documents/GANresults/'+result_file_name+'.csv', mode='w') as file:
-            writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            for id, pred, gt in v_no_duplicates:
-                id_csv = id
-                pred_csv = pred[np.argmax(gt)]
-                gt_csv = np.argmax(gt)
-                one_row=[]
-                one_row.append(str(id_csv))
-                one_row.append(str(gt_csv))
-                one_row.append(str(pred_csv))
-
-                writer.writerow(one_row)
-
-
-
-        # log.infov("Average accuracy : %.4f", avg*100)
-
-
+from data_providers.utils import get_data_provider_by_path
+from models.dense_net_3d import DenseNet3D
 
 
 def construct_train_dir(config):
@@ -279,45 +139,6 @@ def construct_train_dir(config):
     
 
 
-def tower_loss(scope, images, labels,config):
-  """Calculate the total loss on a single tower running the CIFAR model.
-
-  Args:
-    scope: unique prefix string identifying the CIFAR tower, e.g. 'tower_0'
-    images: Images. 4D tensor of shape [batch_size, height, width, 3].
-    labels: Labels. 1D tensor of shape [batch_size].
-
-  Returns:
-     Tensor of shape [] containing the total loss for a batch of data
-  """
-
-  # Build inference Graph.
-
-  logits = mri.inference(images, config)
-
-
-  # Build the portion of the Graph calculating the losses. Note that we will
-  # assemble the total_loss using a custom function below.
-  loss ,accuracy_each_batch,prediction,labels= mri.loss(logits, labels,config)
-
-
-
-  # prediction=tf.get_collection('prediction_label', scope)
-  # labels=tf.get_collection('target_label', scope)
-  #
-  # correct_prediction_each_batch = tf.equal(
-  #     tf.argmax(prediction, 1),
-  #     tf.argmax(labels, 1))
-  # accuracy_each_batch2 = tf.reduce_mean(tf.cast(correct_prediction_each_batch, tf.float32))
-
-  tf.summary.scalar("loss/train_accuracy", accuracy_each_batch)
-  tf.summary.scalar("loss/D_total_loss_L2", loss)
-
-
-
-  return loss, accuracy_each_batch,prediction,labels
-
-
 def average_gradients(tower_grads):
   """Calculate the average gradient for each shared variable across all towers.
 
@@ -354,256 +175,6 @@ def average_gradients(tower_grads):
     grad_and_var = (grad, v)
     average_grads.append(grad_and_var)
   return average_grads
-
-
-def train(config,whichFoldData,all_train_dir):
-  """Train CIFAR-10 for a number of steps."""
-  with tf.Graph().as_default(), tf.device('/cpu:0'):
-    # Create a variable to count the number of train() calls. This equals the
-    # number of batches processed * config.num_gpus.
-    total_start_time = time.time()
-    global_step = tf.get_variable(
-        'global_step', [],
-        initializer=tf.constant_initializer(0), trainable=False)
-
-    images, labels, num_examples_per_epoch_for_train, dataset_test, all_hdf5_data = mri.distorted_inputs(config,whichFoldData)
-
-    num_batches_per_epoch = (num_examples_per_epoch_for_train /
-                             config.batch_size / config.num_gpus)
-    decay_steps = int(num_batches_per_epoch * mri.NUM_EPOCHS_PER_DECAY)
-
-    # Decay the learning rate exponentially based on the number of steps.
-    lr = tf.train.exponential_decay(config.learning_rate_d,
-                                    global_step,
-                                    decay_steps,
-                                    mri.LEARNING_RATE_DECAY_FACTOR,
-                                    staircase=True)
-
-
-
-
-
-
-
-
-    # Create an optimizer that performs gradient descent.
-    opt = tf.train.MomentumOptimizer(
-        lr, config.nesterov_momentum, use_nesterov=True)
-
-    # Get images and labels for CIFAR-10.
-
-
-
-
-    batch_queue = tf.contrib.slim.prefetch_queue.prefetch_queue(
-          [images, labels], capacity=2 * config.num_gpus)
-    # Calculate the gradients for each model tower.
-    tower_grads = []
-    with tf.variable_scope(tf.get_variable_scope()):
-
-      for i in xrange(config.num_gpus):
-        with tf.device('/gpu:%d' % i):
-          with tf.name_scope('%s_%d' % (mri.TOWER_NAME, i)) as scope:
-            # Dequeues one batch for the GPU
-            image_batch, label_batch = batch_queue.dequeue()
-            # Calculate the loss for one tower of the CIFAR model. This function
-            # constructs the entire CIFAR model but shares the variables across
-            # all towers.
-            loss, accuracy_each_batch,prediction,labels = tower_loss(scope, image_batch, label_batch,config)
-
-            # Reuse variables for the next tower.
-            tf.get_variable_scope().reuse_variables()
-
-            # Retain the summaries from the final tower.
-            summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
-
-            # Calculate the gradients for the batch of data on this CIFAR tower.
-            grads = opt.compute_gradients(loss)
-
-            # Keep track of the gradients across all towers.
-            tower_grads.append(grads)
-
-    # We must calculate the mean of each gradient. Note that this is the
-    # synchronization point across all towers.
-    grads = average_gradients(tower_grads)
-
-    # Add a summary to track the learning rate.
-    summaries.append(tf.summary.scalar('learning_rate', lr))
-
-    # Add histograms for gradients.
-    for grad, var in grads:
-      if grad is not None:
-        summaries.append(tf.summary.histogram(var.op.name + '/gradients', grad))
-
-    # Apply the gradients to adjust the shared variables.
-    apply_gradient_op = opt.apply_gradients(grads, global_step=global_step)
-
-    # Add histograms for trainable variables.
-    for var in tf.trainable_variables():
-      summaries.append(tf.summary.histogram(var.op.name, var))
-
-
-    # Group all updates to into a single train op.
-    train_op = apply_gradient_op
-
-    # Create a saver.
-    saver = tf.train.Saver(tf.global_variables(),max_to_keep=0)
-
-    # Build the summary operation from the last tower summaries.
-    summary_op = tf.summary.merge(summaries)
-
-    # Build an initialization operation to run below.
-    init = tf.global_variables_initializer()
-
-    # Start running operations on the Graph. allow_soft_placement must be set to
-    # True to build towers on GPU, as some of the ops do not have GPU
-    # implementations.
-    sess = tf.Session(config=tf.ConfigProto(
-        allow_soft_placement=True,
-        log_device_placement= False))
-    sess.run(init)
-
-    # Start the queue runners.
-    tf.train.start_queue_runners(sess=sess)
-
-    summary_writer = tf.summary.FileWriter(all_train_dir[whichFoldData], sess.graph)
-
-    for step in xrange(config.max_training_steps):
-      start_time = time.time()
-      # print("\n", '-' * 30, "Train epoch: %d" % global_step, '-' * 30, '\n')
-      print("\n", '-' * 30, "Train epoch: %d" % step, '-' * 30, '\n')
-      _, loss_value,accuracy_each_batch_value ,prediction_value,labels_value = sess.run([train_op, loss, accuracy_each_batch,prediction,labels])
-      duration = time.time() - start_time
-
-      assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
-
-      if step % 10 == 0:
-        num_examples_per_step = config.batch_size * config.num_gpus
-        examples_per_sec = num_examples_per_step / duration
-        sec_per_batch = duration / config.num_gpus
-
-        format_str = ('%s: step %d, loss = %.2f accuracy_each_batch=%.2f   (%.1f examples/sec; %.3f '
-                      'sec/batch)')
-        log.infov (format_str % (datetime.now(), step, loss_value,accuracy_each_batch_value,
-                             examples_per_sec, sec_per_batch))
-
-      if step % 100 == 0:
-        summary_str = sess.run(summary_op)
-        summary_writer.add_summary(summary_str, step)
-
-      # Save the model checkpoint periodically.
-      if step % config.output_save_step == 0 or (step + 1) == config.max_training_steps:
-        checkpoint = os.path.join(all_train_dir[whichFoldData], 'model.ckpt')
-        saver.save(sess, checkpoint, global_step=step)
-
-    total_time = time.time() - total_start_time
-    log.infov("total training runtime for one fold all epoches: %s ", total_time)
-    return dataset_test, all_hdf5_data
-
-
-"""Run Eval once.
-
-  Args:
-    saver: Saver.
-    summary_writer: Summary writer.
-    top_k_op: Top K op.
-    summary_op: Summary op.
-  """
-def eval_once(saver, summary_writer, predicts,labels, summary_op,train_dir, config,num_test_example,result_file_name, whichFoldData,loss):
-
-    evaler = EvalManager()
-    with tf.Session() as sess:
-
-        # if config.checkpoint:
-        #
-        #     saver.restore(sess, config.checkpoint)
-        #     log.info("Loaded from checkpoint!")
-
-      ckpt = tf.train.get_checkpoint_state(train_dir)
-      if ckpt and ckpt.model_checkpoint_path:
-            # Restores from checkpoint
-        saver.restore(sess, ckpt.model_checkpoint_path)
-            # Assuming model_checkpoint_path looks something like:
-            #   /my-favorite-path/cifar10_train/model.ckpt-0,
-            # extract global_step from it.
-        global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
-      else:
-        print('No checkpoint file found')
-        return
-
-        # Start the queue runners.
-      coord = tf.train.Coordinator()
-      try:
-        threads = []
-        for qr in tf.get_collection(tf.GraphKeys.QUEUE_RUNNERS):
-          threads.extend(qr.create_threads(sess, coord=coord, daemon=True,
-                                                 start=True))
-
-        batch_size = config.batch_size
-        num_iter = int(math.ceil(num_test_example / batch_size))
-
-        true_count = 0  # Counts the number of correct predictions.
-        total_sample_count = num_iter * batch_size
-
-
-        step=0
-
-        while step < num_iter and not coord.should_stop():
-          loss_test, prediction_value, ground_truth = sess.run([loss, predicts, labels])
-          tf.add_to_collection('test_losses', loss_test)
-          true_count += np.sum(prediction_value)
-          step += 1
-          evaler.add_batch_new(prediction_value, ground_truth)
-
-        # Compute precision @ 1.
-        precision = true_count / total_sample_count
-        # print('%s: precision @ 1 = %.3f' % (datetime.now(), precision))
-
-        summary = tf.Summary()
-        total_test_losses = tf.get_collection('test_losses')
-
-        # Calculate the total loss for the current tower.
-        total_test_loss = tf.add_n(total_test_losses, name='total_loss')
-        tf.summary.scalar("loss/D_test_total_loss", total_test_loss)
-        summary.ParseFromString(sess.run(summary_op))
-        summary.value.add(tag='Precision @ 1', simple_value=precision)
-        summary_writer.add_summary(summary, global_step)
-      except Exception as e:
-        coord.request_stop(e)
-
-      coord.request_stop()
-      coord.join(threads, stop_grace_period_secs=10)
-      evaler.report(result_file_name)
-      log.infov("Evaluation complete.")
-
-
-
-def eval_run(result_file_name, dataset_test, whichFoldData, all_hdf5_data,config,train_dir):
-
-    log.infov("Start 1-epoch Inference and Evaluation")
-
-    log.info("# of examples = %d", len(dataset_test))
-
-    batch_size= config.batch_size
-
-    with tf.Graph().as_default() as g:
-
-        ids,images, labels = mri.distorted_inputs_test(all_hdf5_data,dataset_test,batch_size, whichFoldData)
-        logits = mri.inference(images, config)
-        predicts = tf.nn.softmax(logits)
-        loss, accuracy_each_batch1,prediction1,labels1= mri.loss(logits, labels, config)
-
-        # Restore the moving average version of the learned variables for eval.
-        variable_averages = tf.train.ExponentialMovingAverage(
-            mri.MOVING_AVERAGE_DECAY)
-        variables_to_restore = variable_averages.variables_to_restore()
-        saver = tf.train.Saver(variables_to_restore)
-        # Build the summary operation based on the TF collection of Summaries.
-        summary_op = tf.summary.merge_all()
-
-        summary_writer = tf.summary.FileWriter(config.eval_dir, g)
-        eval_once(saver, summary_writer, predicts,labels, summary_op,train_dir,config,len(dataset_test),result_file_name, whichFoldData,loss)
-
 
 
 
@@ -665,15 +236,36 @@ def main(argv=None):  # pylint: disable=unused-argument
     config = argparser(is_train=True)
     all_train_dir,all_result_file_name = construct_train_dir(config)
     # config.cross_validation_number
+    dataset_path = os.path.join(r"./datasets/mri/")
+
+    dataset_train, dataset_test, all_hdf5_data = mri.create_default_splits(dataset_path,config.hdf5FileName,config.idFileName,config.cross_validation_number)
 
     while whichFoldData < config.cross_validation_number:
+        data_provider = get_data_provider_by_path(config, dataset_train, dataset_test, all_hdf5_data, whichFoldData)
+        model = DenseNet3D(config,data_provider,all_train_dir,whichFoldData)
         if config.train:
-            dataset_test, all_hdf5_data=train(config, whichFoldData, all_train_dir)
+            print("Data provider train images: ", data_provider.train.num_examples)
+            model.train_all_epochs(config)
+
         if config.test:
-            # images, labels, num_examples_per_epoch_for_train, dataset_test, all_hdf5_data = mri.distorted_inputs(config,
-            #                                                                                                      whichFoldData)
-            eval_run(all_result_file_name[whichFoldData], dataset_test[whichFoldData], whichFoldData, all_hdf5_data,config,all_train_dir[whichFoldData])
+            if not config.train:
+                model.load_model()
+            print("Data provider test images: ", data_provider.test.num_examples)
+            print("Testing...")
+            losses = []
+            accuracies = []
+            # for i in range(10):
+            #     loss, accuracy = model.test(data_provider.test, batch_size=config.batch_size)
+            #     losses.append(loss)
+            #     accuracies.append(accuracy)
+            # loss = np.mean(losses)
+            # accuracy = np.mean(accuracies)
+            # print("mean for repeat run 10times cross_entropy: %f, mean accuracy: %f" % (loss, accuracy))
+            model.test_and_record(all_result_file_name[whichFoldData], whichFoldData,config,all_train_dir[whichFoldData],data_provider.test, batch_size=config.batch_size)
+
         whichFoldData = whichFoldData + 1
+
+
 
 
     #

@@ -41,9 +41,10 @@ def argparser(is_train=True):
     # learning
     parser.add_argument('--max_sample', type=int, default=50000,
                         help='num of samples the model can see')
-    parser.add_argument('--max_training_steps', type=int, default=5)
+    parser.add_argument('--max_training_steps', type=int, default=1000)
     parser.add_argument('--reduce_lr_epoch_1', type=int, default=75)
     parser.add_argument('--reduce_lr_epoch_2', type=int, default=110)
+    parser.add_argument('--queue_size', type=int, default=30)
     parser.add_argument('--learning_rate_g', type=float, default=0.0025)
     parser.add_argument('--learning_rate_d', type=float, default=0.01)
     parser.add_argument('--update_rate', type=int, default=6)
@@ -94,6 +95,17 @@ def argparser(is_train=True):
         '--weight_decay', '-wd', type=float, default=1e-4, metavar='',
         help='Weight decay for optimizer (default: %(default)s)')
 
+    parser.add_argument(
+        '--gpu_id', '-gid', type=str, default='1',
+        help='Specify the gpu ID to run the program')
+    parser.add_argument(
+        '--renew-logs', dest='renew_logs', action='store_true',
+        help='Erase previous logs for model if exists.')
+    parser.add_argument(
+        '--not-renew-logs', dest='renew_logs', action='store_false',
+        help='Do not erase previous logs for model if exists.')
+    parser.set_defaults(renew_logs=False)
+
 
 
 
@@ -119,7 +131,14 @@ def argparser(is_train=True):
         print("You should train or test your network. Please check params.")
         exit()
 
-
+    # ==========================================================================
+    # LIMITE THE USAGE OF THE GPU
+    # =========================================================================
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = config.gpu_id
+    # ==========================================================================
+    # LOG FILE SETTING
+    # ==========================================================================
 
     print("Params:")
     for k, v in model_params.items():

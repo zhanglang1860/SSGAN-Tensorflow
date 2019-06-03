@@ -112,27 +112,7 @@ def distorted_inputs(config,whichFoldData):
   Raises:
     ValueError: If no data_dir
   """
-  dataset_path = os.path.join(r"./datasets/mri/")
 
-  dataset_train, dataset_test, all_hdf5_data = create_default_splits(dataset_path, hdf5FileName=config.hdf5FileName,
-                                                              idFileName=config.idFileName,
-                                                              cross_validation_number=config.cross_validation_number)
-  # dataset_train, dataset_test are 10 cross validation data.
-  # dataset_train[i] is the i-th fold data
-
-  img, label = get_data(dataset_train[0][0],all_hdf5_data)
-
-  print("step3")
-  config.h = img.shape[0]
-  config.w = img.shape[1]
-  config.c = img.shape[2]
-
-  # if len(img.shape) == 3:
-  #     config.c = img.shape[2]
-  # else:
-  #     config.c = 1
-
-  config.num_class = label.shape[0]
   nput_ops, batch_train = mri_input.distorted_inputs(all_hdf5_data, whichFoldData,dataset_train,
                                                   config.batch_size)
 
