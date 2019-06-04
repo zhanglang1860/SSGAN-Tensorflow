@@ -54,6 +54,42 @@ def prepare_h5py(train_image, train_label, test_image, test_label, data_dir, num
 
 
 
+def prepare_h5py_mri2_8020(image, label, data_dir, num_class=10,shape=None,first_class_label='0',second_class_label='1', train_test_name='train_'):
+
+    print('Preprocessing data...')
+
+    import progressbar
+    bar = progressbar.ProgressBar(maxval=833,
+                                  widgets=[progressbar.Bar('=', '[', ']'), ' ',
+                                           progressbar.Percentage()])
+    bar.start()
+
+    hdf5_file_name=train_test_name+'MRIdata_'+ str(num_class) +'_'+first_class_label+'_'+second_class_label+'.hdf5'
+    id_file_name=train_test_name+'MRIdata_'+ str(num_class) +'_'+first_class_label+'_'+second_class_label+'_id.txt'
+
+    f = h5py.File(os.path.join(data_dir, hdf5_file_name), 'w')
+    data_id = open(os.path.join(data_dir, id_file_name), 'w')
+    for i in range(image.shape[0]):
+
+        if i % (image.shape[0] / 100) == 0:
+            bar.update(i / (image.shape[0] / 100))
+
+        grp = f.create_group(str(i))
+        data_id.write(str(i) + '\n')
+        if shape:
+            grp['image'] = np.reshape(image[i], shape, order='F')
+        else:
+            grp['image'] = image[i]
+        label_vec = np.zeros(num_class)#10
+        index=label[i] % 10
+        label_vec[label[i] % 10] = 1
+        grp['label'] = label_vec.astype(np.bool)
+    bar.finish()
+    f.close()
+    data_id.close()
+    return
+
+
 def prepare_h5py_mri2(image, label, data_dir, num_class=10,shape=None,first_class_label='0',second_class_label='1'):
 
     print('Preprocessing data...')
@@ -90,7 +126,7 @@ def prepare_h5py_mri2(image, label, data_dir, num_class=10,shape=None,first_clas
     return
 
 
-def prepare_h5py_mri3(image, label, data_dir, num_class=10,shape=None):
+def prepare_h5py_mri3(image, label, data_dir, train_test_name, num_class=10,shape=None):
 
     print('Preprocessing data...')
 
@@ -100,8 +136,8 @@ def prepare_h5py_mri3(image, label, data_dir, num_class=10,shape=None):
                                            progressbar.Percentage()])
     bar.start()
 
-    f = h5py.File(os.path.join(data_dir, 'MRIdata_3_AD_MCI_Normal.hdf5'), 'w')
-    data_id = open(os.path.join(data_dir, 'MRIdata_3_AD_MCI_Normal_id.txt'), 'w')
+    f = h5py.File(os.path.join(data_dir, train_test_name+'MRIdata_3_AD_MCI_Normal.hdf5'), 'w')
+    data_id = open(os.path.join(data_dir, train_test_name+'MRIdata_3_AD_MCI_Normal_id.txt'), 'w')
     for i in range(image.shape[0]):
 
         # if i % (image.shape[0] / 100) == 0:
@@ -305,6 +341,7 @@ def download_mri2_class(download_path):
 
     for i in range(len(real_labels)):
         j = i+1
+
         while j < len(real_labels):
             addrs=image_class_list[i]+image_class_list[j]
 
@@ -338,6 +375,148 @@ def download_mri2_class(download_path):
             all_image = np.array(all_images)
             prepare_h5py_mri2(all_image, all_label, data_dir, 2,first_class_label=real_labels[i],second_class_label=real_labels[j])
             j=j+1
+
+
+
+
+def download_mri23_class8020(download_path):
+
+    data_dir = os.path.join(download_path, 'mri')
+
+    all_jpg_path = '/data1/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/all/'
+
+    if check_file(data_dir):
+        print('mri was downloaded.')
+        return
+
+
+
+    real_labels = ['AD','MCI','Normal']
+    image_class_list = []
+    label_class_list = []
+    for i in range(len(real_labels)):
+        image_class_list.append([])
+        label_class_list.append([])
+
+    # for i in range(len(real_labels)):
+    #     image_class_list[i] = []
+    #     label_class_list[i] = []
+
+    with open("/data1/wenyu/PycharmProjects/SSGAN-original-Tensorflow/datasets/mri/label.csv") as file:
+        for line in file:
+            strFull = line.split(',')
+            strFull[0]=strFull[0]+'.nii'
+            each_label = strFull[1].split('\n')
+            class_label_index=int(each_label[0])
+            image_class_list[class_label_index].append(strFull[0])
+            label_class_list[class_label_index].append(each_label[0])
+
+
+    for i in range(len(real_labels)):
+        c = list(zip(image_class_list[i], label_class_list[i]))
+        shuffle(c)
+        image_class_list[i], label_class_list[i] = zip(*c)
+        image_class_list[i]=list(image_class_list[i])
+        label_class_list[i] = list(label_class_list[i])
+
+    all_images_train = []
+    all_images_test = []
+    all_labels_train = []
+    all_labels_test = []
+
+    for i in range(len(real_labels)):
+        addrs = image_class_list[i]
+        labels = label_class_list[i]
+
+        for index in range(len(addrs)):
+            addr = addrs[index]
+            # Get nibabel image object
+            mri = nipy.load_image(all_jpg_path + addr).get_data().transpose((1, 0, 2))
+            data = np.zeros((109, mri.shape[1], mri.shape[2], 1), dtype='float32')
+            mx = mri.max(axis=0).max(axis=0).max(axis=0)
+            mri = np.array(mri) / mx
+            data[:, :, :, 0] = mri
+            mri_final = np.array(data)
+            if index<55:
+                all_images_test.append(mri_final)
+                all_labels_test.append(labels[index])
+            else:
+                all_images_train.append(mri_final)
+                all_labels_train.append(labels[index])
+
+    all_labels_train = np.array(all_labels_train, dtype=np.uint8)
+    all_labels_test = np.array(all_labels_test, dtype=np.uint8)
+
+
+    all_images_test = np.array(all_images_test)
+    all_images_train = np.array(all_images_train)
+
+    prepare_h5py_mri3(all_images_train, all_labels_train, data_dir, "train_", 3)
+    prepare_h5py_mri3(all_images_test, all_labels_test, data_dir, "test_", 3)
+
+
+
+    for i in range(len(real_labels)):
+        j = i+1
+        while j < len(real_labels):
+
+            all_images_train = []
+            all_images_test = []
+            all_labels_train = []
+            all_labels_test = []
+
+
+            addrs=image_class_list[i]+image_class_list[j]
+
+            class_0_count = len(label_class_list[i])
+            class_1_count = len(label_class_list[j])
+
+
+            for ii in range(len(label_class_list[i])):
+                label_class_list[i][ii]=0
+
+
+            for jj in range(len(label_class_list[j])):
+                label_class_list[j][jj]=1
+
+            labels = label_class_list[i]+label_class_list[j]
+
+            for index in range(len(addrs)):
+                addr = addrs[index]
+                # Get nibabel image object
+                mri = nipy.load_image(all_jpg_path + addr).get_data().transpose((1, 0, 2))
+                data = np.zeros((109, mri.shape[1], mri.shape[2], 1), dtype='float32')
+                mx = mri.max(axis=0).max(axis=0).max(axis=0)
+                mri = np.array(mri) / mx
+                data[:, :, :, 0] = mri
+                mri_final = np.array(data)
+
+                if index < int(len(addrs)*0.1+1):
+                    all_images_test.append(mri_final)
+                    all_labels_test.append(labels[index])
+                elif (index > class_0_count and index < class_0_count +int(len(addrs)*0.1)+1):
+                    all_images_test.append(mri_final)
+                    all_labels_test.append(labels[index])
+                else:
+                    all_images_train.append(mri_final)
+                    all_labels_train.append(labels[index])
+
+
+            # def show_img(ori_img):
+            #     plt.imshow(ori_img[:, :, 91], cmap='gray')  # channel_last
+            #     plt.show()
+
+            all_labels_train = np.array(all_labels_train, dtype=np.uint8)
+            all_images_train = np.array(all_images_train)
+            all_labels_test = np.array(all_labels_test, dtype=np.uint8)
+            all_images_test = np.array(all_images_test)
+
+            prepare_h5py_mri2_8020(all_images_train, all_labels_train, data_dir, 2,first_class_label=real_labels[i],second_class_label=real_labels[j],train_test_name='train_')
+            prepare_h5py_mri2_8020(all_images_test, all_labels_test, data_dir, 2, first_class_label=real_labels[i],second_class_label=real_labels[j], train_test_name='test_')
+            j=j+1
+
+
+
 
 
 
@@ -512,8 +691,9 @@ if __name__ == '__main__':
 
     if not os.path.exists(path): os.mkdir(path)
 
-    download_mri2_class(path)
-    download_mri3_class(path)
+    # download_mri2_class(path)
+    download_mri23_class8020(path)
+    # download_mri3_class(path)
 
     #
     # if 'MNIST' in args.datasets:
