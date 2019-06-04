@@ -3,7 +3,6 @@ import tensorflow.contrib.layers as layers
 import tensorflow.contrib.slim as slim
 import numpy as np
 from util import log
-from tensorflow_extentions import grouped_convolution
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import array_ops
 import re

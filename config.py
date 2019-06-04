@@ -66,7 +66,7 @@ def argparser(is_train=True):
              'performed right after training.')
     parser.add_argument(
         '--model_type', '-m', type=str, choices=['DenseNet', 'DenseNet-BC'],
-        default='DenseNet',
+        default='DenseNet-BC',
         help='What type of model to use')
     parser.add_argument(
         '--growth_rate', '-k', type=int, choices=[12, 24, 40],
@@ -92,7 +92,7 @@ def argparser(is_train=True):
         '--reduction', '-red', type=float, default=0.5, metavar='',
         help='reduction Theta at transition layer for DenseNets-BC models')
     parser.add_argument(
-        '--weight_decay', '-wd', type=float, default=1e-4, metavar='',
+        '--weight_decay', '-wd', type=float, default=5e-4, metavar='',
         help='Weight decay for optimizer (default: %(default)s)')
 
     parser.add_argument(
@@ -121,7 +121,7 @@ def argparser(is_train=True):
 
     if config.model_type == 'DenseNet':
         config.bc_mode = False
-        config.reduction = 1.0
+        config.reduction = 0.5
     elif config.model_type == 'DenseNet-BC':
         config.bc_mode = True
 
