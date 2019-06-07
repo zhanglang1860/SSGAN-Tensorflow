@@ -142,15 +142,27 @@ def main(argv=None):  # pylint: disable=unused-argument
                                                                                                      config.testhdf5FileName,
                                                                                                      config.idFileNametrain,
                                                                                                      config.testidFileName)
-    # config.cross_validation_number
-    while whichFoldData < 1:
+
+    while whichFoldData < config.cross_validation_number:
         data_provider = get_data_provider_by_path(config, dataset_train, dataset_test, all_hdf5_data_train, all_hdf5_data_test, whichFoldData)
-        model = GAN3D(config,data_provider,all_train_dir,whichFoldData, iis_train=True)
+        model = GAN3D(config,data_provider,all_train_dir,whichFoldData, is_train=True)
 
 
         if config.train:
+            total_start_time = time.time()
             print("Data provider train images: ", data_provider.train.num_examples)
             model.train_all_epochs(config)
+            total_training_time = time.time() - total_start_time
+            # f.close()
+            # fx.close()
+            print("\n each fold Total training time for all epoches : %s  and %s seconds" % (str(timedelta(
+                seconds=total_training_time)), total_training_time))
+
+            fxx = open(all_train_dir[whichFoldData] + '/timeReport_fold' + str(whichFoldData) + '.txt', 'w')
+            fxx.write("\n each fold Total training time for all epoches : %s  and %s seconds" % (str(timedelta(
+                seconds=total_training_time)), total_training_time))
+            fxx.write('\n')
+            fxx.close()
 
         if config.test:
             if not config.train:
@@ -160,46 +172,49 @@ def main(argv=None):  # pylint: disable=unused-argument
 
             model.test_and_record(all_result_file_name[whichFoldData], whichFoldData,config,all_train_dir[whichFoldData],data_provider.test, batch_size=config.batch_size)
 
+
+
+
         whichFoldData = whichFoldData + 1
 
 
     accuracy_10folds_all = []
 
 
-    with open('./train_dir/GANresults/' + all_result_file_name[10] + '.csv', "w") as text_file:
-        for i in range(10):
-            # Open a file: file
-            file = open(all_train_dir[i] + '/GANresults/' + all_result_file_name[i] + '.csv', mode='r')
+    # with open('./train_dir/GANresults/' + all_result_file_name[10] + '.csv', "w") as text_file:
+    #     for i in range(config.cross_validation_number):
+    #         # Open a file: file
+    #         file = open(all_train_dir[i] + '/GANresults/' + all_result_file_name[i] + '.csv', mode='r')
+    #
+    #         # read all lines at once
+    #         all_of_it = file.read()
+    #
+    #         if i == 0:
+    #             text_file.write(all_of_it)
+    #         else:
+    #             all_lines = all_of_it.splitlines()
+    #             j = 0
+    #             for each_line in all_lines:
+    #                 if j > 0:
+    #                     text_file.write(each_line)
+    #                     text_file.write('\r\n')
+    #                 j = j + 1
+    #
+    #         # close the file
+    #     file.close()
 
-            # read all lines at once
-            all_of_it = file.read()
 
-            if i == 0:
-                text_file.write(all_of_it)
-            else:
-                all_lines = all_of_it.splitlines()
-                j = 0
-                for each_line in all_lines:
-                    if j > 0:
-                        text_file.write(each_line)
-                        text_file.write('\r\n')
-                    j = j + 1
-
-            # close the file
-        file.close()
-
-
-    input_file_name=config.hdf5FileName
+    input_file_name=config.hdf5FileNametrain
     class_labels = []
     name_list = input_file_name.split("_")
-    if int(name_list[1]) == 3:
-        class_labels.append(name_list[2])
+    if int(name_list[2]) == 3:
         class_labels.append(name_list[3])
-        last_class = name_list[4].split(".")
+        class_labels.append(name_list[4])
+        last_class = name_list[5].split(".")
         class_labels.append(last_class[0])
     else:
-        class_labels.append(name_list[2])
-        last_class = name_list[3].split(".")
+        class_labels.append(name_list[3])
+        last_class = name_list[4].split(".")
         class_labels.append(last_class[0])
 
     fold_write = 0
@@ -211,7 +226,7 @@ def main(argv=None):  # pylint: disable=unused-argument
 
 
     for each_result_file_name in all_result_file_name:
-        if fold_write<10:
+        if fold_write < config.cross_validation_number:
             accuracy, cr, cm = calculateConfusionMatrix(each_result_file_name, class_labels, all_train_dir[fold_write])
         else:
             accuracy, cr, cm = calculateConfusionMatrix(each_result_file_name, class_labels, './train_dir')
@@ -221,11 +236,11 @@ def main(argv=None):  # pylint: disable=unused-argument
         f = open("./GANconfusionMatrixResults/ConfusionMatrix"+str(fold_write)+".txt", 'w')
         log.info("Fold: {}".format(fold_write))
         f.write("Fold: {}\n".format(fold_write))
-        f.write('{}\n\nClassification Report\n\n{}\n\nConfusion Matrix\n\n{}\n'.format(config.hdf5FileName, cr, cm))
+        f.write('{}\n\nClassification Report\n\n{}\n\nConfusion Matrix\n\n{}\n'.format(config.hdf5FileNametrain, cr, cm))
         f.write("accuracy: {}\n".format(accuracy))
         log.info("accuracy: {}".format(accuracy))
         f.close()
-        if fold_write < 10:
+        if fold_write < config.cross_validation_number:
             accuracy_10folds_all.append(accuracy)
 
         fold_write = fold_write+1
@@ -234,19 +249,20 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     accuracy_10folds_average = np.mean(accuracy_10folds_all)
 
-    with open("./GANconfusionMatrixResults/allConfusionMatrix.txt", "w") as text_file:
-        text_file.write("Fold: average 10 folds confusion matrix \n")
-        text_file.write("average 10 accuracy: {}\n".format(accuracy_10folds_average))
-        log.info("Fold: average 10 folds confusion matrix ")
-        log.info("average 10 accuracy: {}".format(accuracy_10folds_average))
-
-        accuracy, cr, cm = calculateConfusionMatrix(all_result_file_name[10], class_labels,'./train_dir')
-
-
-        text_file.write('{} 10 folds result to compute\n\nClassification Report\n\n{}\n\nConfusion Matrix\n\n{}\n'.format(config.hdf5FileName, cr, cm))
-        text_file.write("accuracy: {}\n".format(accuracy))
-        log.info("accuracy: {}".format(accuracy))
-
+    # with open("./GANconfusionMatrixResults/allConfusionMatrix.txt", "w") as text_file:
+    #     text_file.write("Fold: average 10 folds confusion matrix \n")
+    #     text_file.write("average 10 accuracy: {}\n".format(accuracy_10folds_average))
+    #     log.info("Fold: average 10 folds confusion matrix ")
+    #     log.info("average 10 accuracy: {}".format(accuracy_10folds_average))
+    #     # all_result_file_name[10]
+    #
+    #     accuracy, cr, cm = calculateConfusionMatrix(all_result_file_name[1], class_labels,'./train_dir')
+    #
+    #
+    #     text_file.write('{} 10 folds result to compute\n\nClassification Report\n\n{}\n\nConfusion Matrix\n\n{}\n'.format(config.hdf5FileName, cr, cm))
+    #     text_file.write("accuracy: {}\n".format(accuracy))
+    #     log.info("accuracy: {}".format(accuracy))
+    #
 
 
 

@@ -36,12 +36,18 @@ class EvalManager(object):
     correct_prediction = np.sum(np.argmax(pred[:, :-1], axis=1) == np.argmax(gt, axis=1))
     return float(correct_prediction) / pred.shape[0]
 
-  def add_batch_new(self, prediction, groundtruth):
+  def add_batch_new(self, prediction, groundtruth,n_classes):
 
     # for now, store them all (as a list of minibatch chunks)
     shold_be_batch_size = len(prediction)
+
+
+
     for index in range(shold_be_batch_size):
-      self._predictions.append(prediction[index])
+      prediction_first_k_class = []
+      for i in range(n_classes):
+        prediction_first_k_class.append(prediction[index][i])
+      self._predictions.append(prediction_first_k_class)
       self._groundtruths.append(groundtruth[index])
 
   def add_batch(self, id, prediction, groundtruth):
@@ -153,7 +159,7 @@ class GAN3D(object):
     self.weights = self.initialiseWeights()
     self.is_training = tf.placeholder_with_default(bool(is_train), [], name='is_training')
 
-    self.build_GAN(is_train=is_train)
+    self.build_GAN()
 
 
 
@@ -163,27 +169,13 @@ class GAN3D(object):
 
     # self._count_trainable_params()
 
-  def build_GAN(self, is_train=True):
+  def build_GAN(self):
 
     self._define_inputs_D_G()
 
-    fake_image = self._build_graph_G(self.z_vector,phase_train=is_train)
+    self.fake_image = self._build_graph_G(self.z_vector,phase_train=self.is_training)
     d_real, d_no_sigmoid_real=self._build_graph_D(self.x_vector, reuse=False)
-
-    d_real = tf.maximum(tf.minimum(d_real, 0.99), 0.01)
-
-
-    self.summary_d_x_hist = tf.summary.histogram("d_prob_x", d_real)
-
-    d_fake, d_no_sigmoid_fake = self._build_graph_D(fake_image, reuse=True)
-
-    d_fake = tf.maximum(tf.minimum(d_fake, 0.99), 0.01)
-    self.summary_d_z_hist = tf.summary.histogram("d_prob_z", d_fake)
-
-    # Compute the discriminator accuracy
-    n_p_x = tf.reduce_sum(tf.cast(d_real > 0.5, tf.int32))
-    n_p_z = tf.reduce_sum(tf.cast(d_fake < 0.5, tf.int32))
-    d_acc = tf.divide(n_p_x + n_p_z, 2 * self.batch_size)
+    d_fake, d_no_sigmoid_fake = self._build_graph_D(self.fake_image, reuse=True)
 
     # Compute the discriminator and generator loss
     # d_loss = -tf.reduce_mean(tf.log(d_real) + tf.log(1-d_fake))
@@ -205,24 +197,17 @@ class GAN3D(object):
       d_loss = tf.reduce_mean(d_loss_real + d_loss_fake)
 
       # Generator loss
-      # g_loss = tf.reduce_mean(tf.log(d_fake[:, -1]))
+      g_loss = tf.reduce_mean(tf.log(d_fake[:, -1]))
 
-      g_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=d_no_sigmoid_fake[:, -1], labels=tf.ones_like(d_fake[:, -1]))
-
-      d_loss = tf.reduce_mean(self.d_loss)
-      g_loss = tf.reduce_mean(self.g_loss)
-
-
-
-      # # Weight annealing
-      # g_loss += tf.reduce_mean(
-      #   self.huber_loss(real_image, fake_image)) * self.recon_weight
+      # Weight annealing
+      g_loss += tf.reduce_mean(
+        self.huber_loss(real_image, fake_image)) * self.recon_weight
 
       GAN_loss = tf.reduce_mean(d_loss + g_loss)
 
       # Classification accuracy
       correct_prediction = tf.equal(tf.argmax(d_real[:, :-1], 1),
-                                    tf.argmax(self.label, 1))
+                                    tf.argmax(self.labels, 1))
       accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
       return s_loss, d_loss_real, d_loss_fake, d_loss, g_loss, GAN_loss, accuracy
 
@@ -232,18 +217,20 @@ class GAN3D(object):
     self.all_preds = d_real
     self.all_targets = self.labels
 
-    self.S_loss, d_loss_real, d_loss_fake, self.d_loss, self.g_loss, GAN_loss, self.accuracy = \
-      build_loss(d_real, d_no_sigmoid_real, d_fake, d_no_sigmoid_fake, self.labels, self.x_vector, fake_image)
+    self.S_loss, self.d_loss_real, self.d_loss_fake, self.d_loss, self.g_loss, self.GAN_loss, self.accuracy = \
+      build_loss(d_real, d_no_sigmoid_real, d_fake, d_no_sigmoid_fake, self.labels, self.x_vector, self.fake_image)
 
-
-
-
-
-    self.summary_d_loss = tf.summary.scalar("d_loss", self.d_loss)
-    self.summary_g_loss = tf.summary.scalar("g_loss", self.g_loss)
-    self.summary_n_p_z = tf.summary.scalar("n_p_z", n_p_z)
-    self.summary_n_p_x = tf.summary.scalar("n_p_x", n_p_x)
-    self.summary_d_acc = tf.summary.scalar("d_acc", self.accuracy)
+    # tf.summary.scalar("loss/accuracy", self.accuracy)
+    # tf.summary.scalar("loss/GAN_loss", GAN_loss)
+    # tf.summary.scalar("loss/S_loss", self.S_loss)
+    # tf.summary.scalar("loss/d_loss", tf.reduce_mean(self.d_loss))
+    # tf.summary.scalar("loss/d_loss_real", tf.reduce_mean(d_loss_real))
+    # tf.summary.scalar("loss/d_loss_fake", tf.reduce_mean(d_loss_fake))
+    # tf.summary.scalar("loss/g_loss", tf.reduce_mean(self.g_loss))
+    # tf.summary.image("img/fake", fake_image)
+    # tf.summary.image("img/real", self.image, max_outputs=1)
+    # tf.summary.image("label/target_real", tf.reshape(self.label, [1, self.batch_size, n, 1]))
+    log.warn('\033[93mSuccessfully loaded the model.\033[0m')
 
     # net_g_test = self._build_graph_G(self.z_vector, phase_train=False, reuse=True)
 
@@ -251,6 +238,7 @@ class GAN3D(object):
     para_d = [v for v in tf.trainable_variables() if v.name.startswith('Discriminator')]
 
     # only update the weights for the discriminator network
+
     self.optimizer_op_d = tf.train.MomentumOptimizer(
       self.learning_rate, self.nesterov_momentum, use_nesterov=True).minimize(self.d_loss, var_list=para_d)
     # only update the weights for the generator network
@@ -264,7 +252,7 @@ class GAN3D(object):
     weights = {}
     xavier_init = tf.contrib.layers.xavier_initializer()
 
-    weights['wg1'] = tf.get_variable("wg1", shape=[4, 4, 4, 512, 128], initializer=xavier_init)
+    weights['wg1'] = tf.get_variable("wg1", shape=[4, 3, 3, 512, 128], initializer=xavier_init)
     weights['wg2'] = tf.get_variable("wg2", shape=[4, 4, 4, 256, 512], initializer=xavier_init)
     weights['wg3'] = tf.get_variable("wg3", shape=[4, 4, 4, 128, 256], initializer=xavier_init)
     weights['wg4'] = tf.get_variable("wg4", shape=[4, 4, 4, 64, 128], initializer=xavier_init)
@@ -273,12 +261,14 @@ class GAN3D(object):
 
     return weights
 
-  def huber_loss(labels, predictions, delta=1.0):
+  def huber_loss(self, labels, predictions, delta=1.0):
     residual = tf.abs(predictions - labels)
     condition = tf.less(residual, delta)
     small_res = 0.5 * tf.square(residual)
     large_res = delta * residual - 0.5 * tf.square(delta)
     return tf.where(condition, small_res, large_res)
+
+
 
 
 
@@ -299,6 +289,7 @@ class GAN3D(object):
     self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=0)
     self.summary_writer = logswriter(self.train_dir, self.sess.graph)
     self.summary_op = tf.summary.merge_all()
+
 
 
   # (Updated)
@@ -360,10 +351,19 @@ class GAN3D(object):
       print("Training from scratch")
       return 1
 
-  # (Updated)
+  def log_one_metric(self, metric, epoch, prefix):
+
+    summary = tf.Summary(value=[
+      tf.Summary.Value(
+        tag='loss_%s' % prefix, simple_value=float(metric))
+    ])
+    self.summary_writer.add_summary(summary, epoch)
+
+
+
   def log_loss_accuracy(self, loss, accuracy, epoch, prefix,
                         should_print=True):
-    print("mean cross_entropy: %f, mean accuracy: %f" % (
+    print(prefix + "mean cross_entropy: %f, mean accuracy: %f" % (
         loss, accuracy))
     summary = tf.Summary(value=[
       tf.Summary.Value(
@@ -382,13 +382,21 @@ class GAN3D(object):
     #   shape=shape,
     #   name='input_videos')
     self.labels = tf.placeholder(
-      tf.float32,
+      dtype=tf.float32,
       shape=[None, self.n_classes],
       name='labels')
+
+
+
     self.learning_rate = tf.placeholder(
       tf.float32,
       shape=[],
       name='learning_rate')
+
+    self.recon_weight = tf.placeholder_with_default(
+      tf.cast(1.0, tf.float32), [])
+
+
     self.x_vector = tf.placeholder(shape=shape, dtype=tf.float32)
     self.z_vector = tf.placeholder(shape=[None, self.n_z], dtype=tf.float32)
 
@@ -497,8 +505,8 @@ class GAN3D(object):
     features_total = int(output.get_shape()[-1])
     output = tf.reshape(output, [-1, features_total])
     W = self.weight_variable_xavier(
-      [features_total, self.n_classes], name='W')
-    bias = self.bias_variable([self.n_classes])
+      [features_total, self.n_classes+1], name='W')
+    bias = self.bias_variable([self.n_classes+1])
     logits = tf.matmul(output, W) + bias
     # Local 
     # features_total = int(output.get_shape()[-1])
@@ -600,6 +608,8 @@ class GAN3D(object):
       z = tf.reshape(z, (self.batch_size, 1, 1, 1, self.n_z))
       g_1 = tf.nn.conv3d_transpose(z, weights['wg1'], (batch_size, 4, 3, 3, 512), strides=[1, 1, 1, 1, 1],
                                    padding="VALID")
+      # g_1 = tf.nn.conv3d_transpose(z, weights['wg1'], (batch_size, 4, 3, 3, 512), strides=strides,
+      #                              padding="SAME")
       g_1 = tf.contrib.layers.batch_norm(g_1, is_training=phase_train)
       g_1 = tf.nn.relu(g_1)
 
@@ -677,7 +687,7 @@ class GAN3D(object):
     batch_size         = config.batch_size
     reduce_lr_epoch_1  = config.reduce_lr_epoch_1
     reduce_lr_epoch_2  = config.reduce_lr_epoch_2
-    total_start_time   = time.time()
+
 
     # Restore the model if we have
     start_epoch = self.load_model()
@@ -702,21 +712,40 @@ class GAN3D(object):
         learning_rate = learning_rate / 100
         print("Decrease learning rate, new lr = %f" % learning_rate)
 
+      recon_weight= min(max(0, (1500 - float(epoch)) / 1500), 1.0) * 10
+      # recon_weight = ((1500 - epoch) / 1500) * 10
+
       print("Training...")
 
 
 
-      mean_D_loss, mean_G_loss, acc, lr_value, summary_d, summary_g = self.train_one_epoch(
-        self.data_provider.train, batch_size, learning_rate)
+      mean_s_loss, mean_accuracy,mean_G_loss, mean_D_loss,mean_D_real_loss,mean_D_fake_loss,mean_gan_loss,lr,recon_w = self.train_one_epoch(
+        self.data_provider.train, batch_size, learning_rate,recon_weight)
 
-      self.log_loss_accuracy(mean_D_loss, acc, epoch, prefix='train_D')
+      self.log_one_metric(mean_s_loss, epoch, prefix='train_S_loss')
+      self.log_one_metric(mean_G_loss, epoch, prefix='train_G_loss')
+      self.log_one_metric(mean_D_real_loss, epoch, prefix='train_D_real_loss')
+      self.log_one_metric(mean_D_fake_loss, epoch, prefix='train_D_fake_loss')
+      self.log_one_metric(mean_gan_loss, epoch, prefix='train_gan_loss')
 
-      self.log_loss_accuracy(mean_G_loss, acc, epoch, prefix='train_G')
+      self.log_loss_accuracy(mean_D_loss, mean_accuracy, epoch, prefix='train_D')
+
 
       summary = tf.Summary(value=[
         tf.Summary.Value(
-          tag='learning_rate', simple_value=float(lr_value))
+          tag='learning_rate', simple_value=float(lr))
       ])
+
+      self.summary_writer.add_summary(summary, epoch)
+
+      summary = tf.Summary(value=[
+        tf.Summary.Value(
+          tag='recon_weight', simple_value=float(recon_w))
+      ])
+
+
+
+
       self.summary_writer.add_summary(summary, epoch)
 
 
@@ -746,25 +775,20 @@ class GAN3D(object):
 
       self.save_model(global_step=epoch)
       self.summary_writer.add_summary(summary, global_step=epoch)
+      self.summary_op = tf.summary.merge_all()
 
-    total_training_time = time.time() - total_start_time
-    # f.close()
-    # fx.close()
-    print("\n each fold Total training time for all epoches : %s  and %s seconds" % (str(timedelta(
-      seconds=total_training_time)),total_training_time))
 
-    fxx = open(self.train_dir + '/timeReport_fold' + str(self.whichFoldData) + '.txt', 'w')
-    fxx.write("\n each fold Total training time for all epoches : %s  and %s seconds" % (str(timedelta(
-      seconds=total_training_time)),total_training_time))
-    fxx.write('\n')
-    fxx.close()
 
 
   # (Updated)
-  def train_one_epoch(self, data, batch_size, learning_rate):
+  def train_one_epoch(self, data, batch_size, learning_rate,recon_weight):
     num_examples = data.num_examples
+    total_gan_loss = []
+    total_D_fake_loss = []
+    total_D_real_loss = []
     total_D_loss = []
     total_G_loss = []
+    total_s_loss = []
     total_accuracy = []
 
 
@@ -776,32 +800,35 @@ class GAN3D(object):
       # labels size is (numpy array):
       #   [batch_size, num_classes]
 
-      d_summary_merge = tf.summary.merge([self.summary_d_loss,
-                                          self.summary_d_x_hist,
-                                          self.summary_d_z_hist,
-                                          self.summary_n_p_x,
-                                          self.summary_n_p_z,
-                                          self.summary_d_acc])
-
-
 
       mris, labels = data.next_batch(batch_size)
 
-      summary_d, discriminator_loss,lr_value = self.sess.run([d_summary_merge, self.d_loss,self.learning_rate], feed_dict={self.z_vector: z, self.x_vector: mris, self.learning_rate: learning_rate})
-      summary_g, generator_loss = self.sess.run([self.summary_g_loss, self.g_loss], feed_dict={self.z_vector: z})
+      fetch = [self.GAN_loss,self.d_loss_fake,self.d_loss_real,self.accuracy,
+                 self.d_loss, self.g_loss, self.S_loss,
+                 self.all_preds, self.all_targets,
+                 self.fake_image, self.learning_rate,self.recon_weight]
 
-      d_accuracy, n_x, n_z = self.sess.run([self.d_acc, self.n_p_x, self.n_p_z], feed_dict={self.z_vector: z, self.x_vector: mris})
-      print n_x, n_z
-      if d_accuracy < self.d_thresh:
-        self.sess.run([self.optimizer_op_d], feed_dict={self.z_vector: z, self.x_vector: mris})
-        print 'Discriminator Training ', "batches_step: ", self.batches_step, ', d_loss:', self.discriminator_loss, 'g_loss:', self.generator_loss, "d_acc: ", self.d_accuracy
 
-      self.sess.run([self.optimizer_op_g], feed_dict={self.z_vector: z})
-      print 'Generator Training ', "batches_step: ", self.batches_step, ', d_loss:', self.discriminator_loss, 'g_loss:', self.generator_loss, "d_acc: ", self.d_accuracy
 
-      total_D_loss.append(discriminator_loss)
-      total_G_loss.append(generator_loss)
-      total_accuracy.append(d_accuracy)
+      gan_loss_per_batch,d_loss_fake_per_batch,d_loss_real_per_batch, accuracy_per_batch,d_loss_per_batch,g_loss_per_batch,s_loss_per_batch,predicts_per_batch,gt_per_batch,fake_image_batch,lr,recon_w = self.sess.run(fetch, feed_dict={self.z_vector: z, self.x_vector: mris, self.learning_rate: learning_rate, self.recon_weight: recon_weight,self.is_training: True,self.labels:labels})
+
+      if i % (2) > 0:
+          # Train the generator
+          self.sess.run([self.optimizer_op_g], feed_dict={self.z_vector: z, self.x_vector: mris, self.learning_rate: learning_rate, self.recon_weight: recon_weight,self.is_training: True,self.labels:labels})
+      else:
+          # Train the discriminator
+          self.sess.run([self.optimizer_op_d], feed_dict={self.z_vector: z, self.x_vector: mris, self.learning_rate: learning_rate, self.recon_weight: recon_weight,self.is_training: True,self.labels:labels})
+
+      total_gan_loss.append(gan_loss_per_batch)
+      total_D_fake_loss.append(d_loss_fake_per_batch)
+      total_D_real_loss.append(d_loss_real_per_batch)
+      total_D_loss.append(d_loss_per_batch)
+      total_G_loss.append(g_loss_per_batch)
+      total_s_loss.append(s_loss_per_batch)
+      total_accuracy.append(accuracy_per_batch)
+
+
+
       self.batches_step += 1
       # self.log_loss_accuracy(
       #     loss, accuracy, self.batches_step, prefix='per_batch',
@@ -810,10 +837,18 @@ class GAN3D(object):
 
 
 
+    mean_gan_loss = np.mean(total_gan_loss)
+    mean_D_fake_loss = np.mean(total_D_fake_loss)
+    mean_D_real_loss = np.mean(total_D_real_loss)
+
     mean_D_loss = np.mean(total_D_loss)
     mean_G_loss = np.mean(total_G_loss)
     mean_accuracy = np.mean(total_accuracy)
-    return mean_D_loss,mean_G_loss, mean_accuracy,lr_value,summary_d,summary_g
+
+    mean_s_loss = np.mean(total_s_loss)
+
+
+    return mean_s_loss, mean_accuracy,mean_G_loss, mean_D_loss,mean_D_real_loss,mean_D_fake_loss,mean_gan_loss,lr,recon_w
 
   # (Updated)
   def test(self, data, batch_size):
@@ -841,23 +876,29 @@ class GAN3D(object):
     total_loss = []
     total_accuracy = []
     batch_size=1
+    z = np.random.normal(0, 1, size=[batch_size, self.n_z]).astype(np.float32)
+
     for i in range(num_examples // batch_size):
       batch = data.next_batch(batch_size)
       feed_dict = {
-        self.videos: batch[0],
+        self.x_vector: batch[0],
         self.labels: batch[1],
+        # self.z_vector: z,
         self.is_training: False,
       }
-      fetches = [self.cross_entropy, self.accuracy,self.prediction,self.labels,self.summary_op]
-      loss, accuracy,prediction,ground_truth, summary = self.sess.run(fetches, feed_dict=feed_dict)
 
-      total_loss.append(loss)
+
+
+      fetches = [self.accuracy,self.all_preds,self.all_targets]
+      accuracy,prediction,ground_truth = self.sess.run(fetches, feed_dict=feed_dict)
+
+      # total_loss.append(s_loss)
       total_accuracy.append(accuracy)
-      evaler.add_batch_new(prediction, ground_truth)
+      evaler.add_batch_new(prediction, ground_truth,self.n_classes)
 
-    mean_loss = np.mean(total_loss)
+    # mean_loss = np.mean(total_loss)
     mean_accuracy = np.mean(total_accuracy)
     evaler.report(result_file_name)
 
-    return mean_loss, mean_accuracy
+    # return mean_loss, mean_accuracy
 
