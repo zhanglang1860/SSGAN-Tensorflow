@@ -173,7 +173,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         whichFoldData = whichFoldData + 1
 
 
-    accuracy_10folds_all = []
+
 
 
     with open('./train_dir/GANresults/' + all_result_file_name[10] + '.csv', "w") as text_file:
@@ -219,7 +219,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     else:
         os.makedirs("./GANconfusionMatrixResults")
 
-
+    accuracy_10folds_all = []
     for each_result_file_name in all_result_file_name:
         if fold_write<10:
             accuracy, cr, cm = calculateConfusionMatrix(each_result_file_name, class_labels, all_train_dir[fold_write])
@@ -228,7 +228,7 @@ def main(argv=None):  # pylint: disable=unused-argument
 
 
 
-        f = open("./GANconfusionMatrixResults/ConfusionMatrix"+str(fold_write)+".txt", 'w')
+        f = open("./GANconfusionMatrixResults/ConfusionMatrix-"+each_result_file_name+".txt", 'w')
         log.info("Fold: {}".format(fold_write))
         f.write("Fold: {}\n".format(fold_write))
         f.write('{}\n\nClassification Report\n\n{}\n\nConfusion Matrix\n\n{}\n'.format(config.hdf5FileName, cr, cm))
@@ -240,22 +240,26 @@ def main(argv=None):  # pylint: disable=unused-argument
 
         fold_write = fold_write+1
 
-    accuracy_10folds_all = np.asarray(accuracy_10folds_all, dtype=np.float32)
+    # accuracy_10folds_all = np.asarray(accuracy_10folds_all, dtype=np.float32)
+    #
+    # accuracy_10folds_average = np.mean(accuracy_10folds_all)
+    #
+    # input_file_name = config.hdf5FileName
+    # class_labels = []
+    # name_list = input_file_name.split(".")
 
-    accuracy_10folds_average = np.mean(accuracy_10folds_all)
-
-    with open("./GANconfusionMatrixResults/allConfusionMatrix.txt", "w") as text_file:
-        text_file.write("Fold: average 10 folds confusion matrix \n")
-        text_file.write("average 10 accuracy: {}\n".format(accuracy_10folds_average))
-        log.info("Fold: average 10 folds confusion matrix ")
-        log.info("average 10 accuracy: {}".format(accuracy_10folds_average))
-
-        accuracy, cr, cm = calculateConfusionMatrix(all_result_file_name[10], class_labels,'./train_dir')
-
-
-        text_file.write('{} 10 folds result to compute\n\nClassification Report\n\n{}\n\nConfusion Matrix\n\n{}\n'.format(config.hdf5FileName, cr, cm))
-        text_file.write("accuracy: {}\n".format(accuracy))
-        log.info("accuracy: {}".format(accuracy))
+    # with open("./GANconfusionMatrixResults/"+name_list[0]+"allConfusionMatrix.txt", "w") as text_file:
+    #     text_file.write("Fold: average 10 folds confusion matrix \n")
+    #     text_file.write("average 10 accuracy: {}\n".format(accuracy_10folds_average))
+    #     log.info("Fold: average 10 folds confusion matrix ")
+    #     log.info("average 10 accuracy: {}".format(accuracy_10folds_average))
+    #
+    #     accuracy, cr, cm = calculateConfusionMatrix(all_result_file_name[10], class_labels,'./train_dir')
+    #
+    #
+    #     text_file.write('{} 10 folds result to compute\n\nClassification Report\n\n{}\n\nConfusion Matrix\n\n{}\n'.format(config.hdf5FileName, cr, cm))
+    #     text_file.write("accuracy: {}\n".format(accuracy))
+    #     log.info("accuracy: {}".format(accuracy))
 
 
 
