@@ -40,7 +40,7 @@ def create_input_ops(dataset,
         log.info("input_ops [%s]: Using specified %d IDs", scope, len(data_id))
 
     # single operations
-    with tf.device("/cpu:0"), tf.name_scope(scope):
+    with tf.device("/gpu:1"), tf.name_scope(scope):
         input_ops['id'] = tf.train.string_input_producer(
            tf.convert_to_tensor(data_id),
             capacity=128

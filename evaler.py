@@ -58,8 +58,8 @@ class Evaler(object):
 
         self.dataset = dataset
 
-        check_data_id(dataset, config.data_id)
-        _, self.batch = create_input_ops(dataset, self.batch_size,
+        check_data_id(dataset[0], config.data_id)
+        _, self.batch = create_input_ops(dataset[0], self.batch_size,
                                          data_id=config.data_id,
                                          is_training=False,
                                          shuffle=False)

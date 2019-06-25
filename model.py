@@ -27,6 +27,8 @@ class Model(object):
         self.n_z = config.n_z
         self.norm_type = config.norm_type
         self.deconv_type = config.deconv_type
+        self.split_dimension_core = config.split_dimension_core
+        self.tt_rank = config.tt_rank
 
         # create placeholders for the input
         self.image = tf.placeholder(
@@ -96,7 +98,7 @@ class Model(object):
         # Generator {{{
         # =========
         G = Generator('Generator', self.h, self.w, self.c,
-                      self.norm_type, self.deconv_type, is_train)
+                      self.norm_type, self.deconv_type, is_train,self.split_dimension_core,self.tt_rank)
         z = tf.random_normal(shape=[self.batch_size, self.n_z], mean=0, stddev=1, dtype=tf.float32)
         fake_image = G(z)
         self.fake_image = fake_image
@@ -104,7 +106,7 @@ class Model(object):
 
         # Discriminator {{{
         # =========
-        D = Discriminator('Discriminator', self.num_class, self.norm_type, is_train)
+        D = Discriminator('Discriminator', self.num_class, self.norm_type, is_train,self.split_dimension_core,self.tt_rank)
         d_real, d_real_logits = D(self.image)
         d_fake, d_fake_logits = D(fake_image)
         self.all_preds = d_real
@@ -121,7 +123,7 @@ class Model(object):
         tf.summary.scalar("loss/d_loss_real", tf.reduce_mean(d_loss_real))
         tf.summary.scalar("loss/d_loss_fake", tf.reduce_mean(d_loss_fake))
         tf.summary.scalar("loss/g_loss", tf.reduce_mean(self.g_loss))
-        tf.summary.image("img/fake", fake_image)
-        tf.summary.image("img/real", self.image, max_outputs=1)
-        tf.summary.image("label/target_real", tf.reshape(self.label, [1, self.batch_size, n, 1]))
+        # tf.summary.image("img/fake", fake_image)
+        # tf.summary.image("img/real", self.image, max_outputs=1)
+        # tf.summary.image("label/target_real", tf.reshape(self.label, [1, self.batch_size, n, 1]))
         log.warn('\033[93mSuccessfully loaded the model.\033[0m')

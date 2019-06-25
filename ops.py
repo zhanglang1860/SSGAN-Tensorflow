@@ -73,6 +73,14 @@ def split_dimension_to_rank_multiple(inp_shape,split_dimension_core):
                                                                             else:
                                                                                 if inp_shape == 4:
                                                                                     out = np.array([2, 1, 1, 2])
+                                                                                else:
+                                                                                    if inp_shape == 91:
+                                                                                        out = np.array([91, 1, 1, 1])
+                                                                                    else:
+                                                                                        if inp_shape == 109:
+                                                                                            out = np.array(
+                                                                                                [109, 1, 1, 1])
+
     else:
         if split_dimension_core==5:
             if inp_shape == 1048576:
@@ -131,6 +139,14 @@ def split_dimension_to_rank_multiple(inp_shape,split_dimension_core):
                                                                                 else:
                                                                                     if inp_shape == 4:
                                                                                         out = np.array([2, 1, 1, 2,1])
+                                                                                    else:
+                                                                                        if inp_shape == 91:
+                                                                                            out = np.array(
+                                                                                                [91, 1, 1, 1, 1])
+                                                                                        else:
+                                                                                            if inp_shape == 109:
+                                                                                                out = np.array(
+                                                                                                    [109, 1, 1, 1, 1])
         else:
             if split_dimension_core == 6:
                 if inp_shape == 1048576:
@@ -190,6 +206,15 @@ def split_dimension_to_rank_multiple(inp_shape,split_dimension_core):
                                                                                         if inp_shape == 4:
                                                                                             out = np.array(
                                                                                                 [1,2, 1, 1, 2, 1])
+                                                                                        else:
+                                                                                            if inp_shape == 91:
+                                                                                                out = np.array(
+                                                                                                    [91, 1, 1, 1, 1, 1])
+                                                                                            else:
+                                                                                                if inp_shape == 109:
+                                                                                                    out = np.array(
+                                                                                                        [109, 1, 1, 1,
+                                                                                                         1, 1])
             else:
                 if split_dimension_core == 7:
                     if inp_shape == 1048576:
@@ -251,6 +276,17 @@ def split_dimension_to_rank_multiple(inp_shape,split_dimension_core):
                                                                                             if inp_shape == 4:
                                                                                                 out = np.array(
                                                                                                     [1, 2, 1, 1, 2, 1,1])
+                                                                                            else:
+                                                                                                if inp_shape == 91:
+                                                                                                    out = np.array(
+                                                                                                        [91, 1, 1, 1, 1,1,
+                                                                                                         1])
+                                                                                                else:
+                                                                                                    if inp_shape == 109:
+                                                                                                        out = np.array(
+                                                                                                            [109, 1, 1,
+                                                                                                             1,
+                                                                                                             1,1,  1])
                 else:
                     if split_dimension_core == 8:
                         if inp_shape == 1048576:
@@ -316,6 +352,20 @@ def split_dimension_to_rank_multiple(inp_shape,split_dimension_core):
                                                                                                     out = np.array(
                                                                                                         [1,1, 2, 1, 1, 2,
                                                                                                          1, 1])
+                                                                                                else:
+                                                                                                    if inp_shape == 91:
+                                                                                                        out = np.array(
+                                                                                                            [91, 1, 1,
+                                                                                                             1, 1, 1,
+                                                                                                             1, 1])
+                                                                                                    else:
+                                                                                                        if inp_shape == 109:
+                                                                                                            out = np.array(
+                                                                                                                [109, 1,
+                                                                                                                 1,
+                                                                                                                 1,
+                                                                                                                 1, 1,
+                                                                                                                 1, 1])
                     else:
                         if split_dimension_core == 9:
                             if inp_shape == 1048576:
@@ -386,6 +436,26 @@ def split_dimension_to_rank_multiple(inp_shape,split_dimension_core):
                                                                                                             [1,1, 1, 2, 1,
                                                                                                              1, 2,
                                                                                                              1, 1])
+                                                                                                    else:
+                                                                                                        if inp_shape == 91:
+                                                                                                            out = np.array(
+                                                                                                                [91, 1,
+                                                                                                                 1,
+                                                                                                                 1, 1,
+                                                                                                                 1,
+                                                                                                                 1, 1, 1])
+                                                                                                        else:
+                                                                                                            if inp_shape == 109:
+                                                                                                                out = np.array(
+                                                                                                                    [
+                                                                                                                        109,
+                                                                                                                        1,
+                                                                                                                        1,
+                                                                                                                        1,
+                                                                                                                        1,
+                                                                                                                        1,
+                                                                                                                        1,
+                                                                                                                        1, 1])
                         else:
                             if split_dimension_core == 10:
                                 if inp_shape == 1048576:
@@ -464,6 +534,31 @@ def split_dimension_to_rank_multiple(inp_shape,split_dimension_core):
                                                                                                                  1,
                                                                                                                  1, 2,
                                                                                                                  1, 1])
+                                                                                                        else:
+                                                                                                            if inp_shape == 91:
+                                                                                                                out = np.array(
+                                                                                                                    [91,
+                                                                                                                     1,
+                                                                                                                     1,
+                                                                                                                     1,
+                                                                                                                     1,
+                                                                                                                     1,
+                                                                                                                     1,
+                                                                                                                     1,1,
+                                                                                                                     1])
+                                                                                                            else:
+                                                                                                                if inp_shape == 109:
+                                                                                                                    out = np.array(
+                                                                                                                        [
+                                                                                                                            109,
+                                                                                                                            1,
+                                                                                                                            1,
+                                                                                                                            1,
+                                                                                                                            1,
+                                                                                                                            1,
+                                                                                                                            1,
+                                                                                                                            1,1,
+                                                                                                                            1])
 
 
 
@@ -555,13 +650,24 @@ def conv2d(input, output_shape, is_train, info=False, k=3, s=2, stddev=0.01,
 
 
 def conv2dtensorNet(input, output_shape, is_train, info=False, k=3, s=2, stddev=0.01,
-           activation_fn=lrelu, norm='batch', name="conv2dTensorNet"):
+           activation_fn=lrelu, norm='batch', name="conv2dTensorNet", split_dimension_core=10,tt_rank=20):
     with tf.variable_scope(name):
-        out_mode = split_dimension_to_rank_multiple(output_shape, 3)
+        out_mode = split_dimension_to_rank_multiple(output_shape, split_dimension_core)
         inp_shape = input.get_shape().as_list()[3]
-        input_mode = split_dimension_to_rank_multiple(inp_shape, 3)
+        input_mode = split_dimension_to_rank_multiple(inp_shape, split_dimension_core)
+
+        tt_rank_array = np.array([1], dtype=np.int32)
+        for ix in range(split_dimension_core):
+            if ix == split_dimension_core - 1:
+                tt_rank_array = np.append(tt_rank_array, [1])
+            else:
+                tt_rank_array = np.append(tt_rank_array, [tt_rank])
+
+
+
+
         _ = tensornet.layers.tt_conv_full(input, [k, k], input_mode, out_mode,
-                                          np.array([16, 16, 16, 1], dtype=np.int32),
+                                          tt_rank_array,
                                           [s, s], biases_initializer=None, scope=name)
         _ = norm_and_act(_, is_train, norm=norm, activation_fn=activation_fn)
         if info: print_info(name, _.get_shape().as_list(), activation_fn)
@@ -586,13 +692,13 @@ def deconv2d(input, output_shape, is_train, info=False, k=3, s=2, stddev=0.01,
 
 
 def bilinear_deconv2d(input, output_shape, is_train, info=False, k=3, s=2, stddev=0.01, 
-                      activation_fn=tf.nn.relu, norm='batch', name='deconv2d'):
+                      activation_fn=lrelu, norm='batch', name='deconv2d',split_dimension_core=10,tt_rank=20):
     with tf.variable_scope(name):
         h = int(input.get_shape()[1]) * s
         w = int(input.get_shape()[2]) * s
         _ = tf.image.resize_bilinear(input, [h, w])
         _ = conv2dtensorNet(_, output_shape, is_train, k=k, s=1,
-                   norm=False, activation_fn=None)
+                   norm=False, activation_fn=None,split_dimension_core=split_dimension_core,tt_rank=tt_rank)
         _ = norm_and_act(_, is_train, norm=norm, activation_fn=activation_fn)
         if info: print_info(name, _.get_shape().as_list(), activation_fn)
     return _

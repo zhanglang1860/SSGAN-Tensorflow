@@ -21,9 +21,10 @@ class Trainer(object):
     def __init__(self, config, model, dataset, dataset_test):
         self.config = config
         self.model = model
+        temp = config.hdf5FileName.split('.')
         hyper_parameter_str = '{}_lr_g_{}_d_{}_update_G{}D{}'.format(
-            config.dataset, config.learning_rate_g, config.learning_rate_d, 
-            config.update_rate, 1
+            temp[0], config.learning_rate_g, config.learning_rate_d,
+            1, config.update_rate
         )
         self.train_dir = './train_dir/%s-%s-%s' % (
             config.prefix,
@@ -38,9 +39,9 @@ class Trainer(object):
         self.batch_size = config.batch_size
 
         _, self.batch_train = create_input_ops(
-            dataset, self.batch_size, is_training=True)
+            dataset[0], self.batch_size, is_training=True)
         _, self.batch_test = create_input_ops(
-            dataset_test, self.batch_size, is_training=False)
+            dataset_test[0], self.batch_size, is_training=False)
 
         # --- optimizer ---
         self.global_step = tf.contrib.framework.get_or_create_global_step(graph=None)
@@ -157,10 +158,10 @@ class Trainer(object):
 
         if step % (self.config.update_rate+1) > 0:
         # Train the generator
-            fetch.append(self.g_optimizer)
+            fetch.append(self.d_optimizer)
         else:
         # Train the discriminator
-            fetch.append(self.d_optimizer)
+            fetch.append(self.g_optimizer)
 
         fetch_values = self.session.run(fetch,
             feed_dict=self.model.get_feed_dict(batch_chunk, step=step)
